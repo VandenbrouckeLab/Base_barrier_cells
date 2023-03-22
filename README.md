@@ -7,7 +7,7 @@ The choroid plexus (ChP) is a highly understudied structure of the central nervo
 
 ## Overview scripts
 
-Here's an overview of the various R scripts used in processing the scRNA-Seq data in the manuscript Verhaege et al.:
+Here's an overview of the various R scripts used in processing the sc/snRNA-Seq data in the manuscript Verhaege et al.:
 - 1.script_scRNAseq_LpsNegAggr.R: Seurat workflow for processing our 7-week-old ChP LV & 4V aggregate object in Figure 1
 - 2.script_scRNAseq_GSM_2677817.R: Basic Seurat workflow for processing the ependymal sample 1 from Shah et al.
 - 3.script_scRNAseq_GSM_2677818.R: Basic Seurat workflow for processing the ependymal sample 2 from Shah et al.
@@ -20,13 +20,13 @@ Here's an overview of the various R scripts used in processing the scRNA-Seq dat
 - 10.script_FB_datasets_Daan_subset2.R: Seurat and harmony workflow for merging the Fibroblasts from our 7- and 22-week-old ChP LV & 4V data with various public dataset Fibroblasts and as such creating the Fibroblast origin subset object in Figure 1
 - 11.script_FB_datasets_Daan_subset2_clint.R: Further processing and exploration of the Fibroblast origin subset object in Figure 1
 - 12.script_scRNAseq_Daan_and_Nina_v2.R: Basic Seurat workflow for processing our 7-, 22- and 82-week-old scRNA-Seq ChP LV & 4V data
-- 13.script_scRNAseq_Lehtinen.R: Basic Seurat workflow for processing the embryonal scRNA-Seq ChP data from the Lehtinen lab (Dani et al.)
+- 13.script_scRNAseq_Lehtinen.R: Basic Seurat workflow for processing the embryonal scRNA-Seq ChP data from the Lehtinen lab (Dani et al., obtained from https://singlecell.broadinstitute.org/single_cell/study/SCP1365/choroid-plexus-cell-atlas)
 - 14.script_FB_datasets_Daan_Fig2_no_3V_CCA.R: Seurat and CCA workflow for merging the Fibroblasts from our 7-, 22- and 82-week-old scRNA-Seq ChP LV & 4V data with LV & 4V embryonal scRNA-Seq ChP data from the Lehtinen lab (Dani et al.) and as such creating the ChP Fibroblast age object in Figure 3. Further processing of the data also included in this script.
-- 15.script_FB_datasets_human_CP.R: Exploration and attempted alternative processing of human snRNA-Seq data (Yang et al.) used in ChP Fibroblast species object in Figure 7
-- 16.script_Harmony_snRNAseq_FBs_human_CP.R: Attempted Harmony analysis workflow snRNA-Seq human (Yang et al.) and snRNA-Seq mouse data from the Lehtinen lab (Dani et al.) for ChP Fibroblast species object in Figure 7
-- 17.script_CCA_Integration_Urvb_and_snRNAseq_FBs_human_CP_Workflow1.R: Attempted CCA analysis workflow 1 snRNA-Seq human (Yang et al.) and scRNA-Seq mouse data for ChP Fibroblast species object in Figure 7
-- 18.script_CCA_Integration_Urvb_and_snRNAseq_FBs_human_CP_Workflow2.R: Attempted CCA analysis workflow 2 snRNA-Seq human (Yang et al.) and scRNA-Seq mouse data for ChP Fibroblast species object in Figure 7
-- 19.script_BBKNN_Integration_Urvb_and_snRNAseq_FBs_human_CP.R: BBKNN analysis snRNA-Seq human (Yang et al.) and scRNA-Seqmouse data for ChP Fibroblast species object in Figure 7
+- 15.script_FB_datasets_human_CP.R: Exploration and attempted alternative processing of human snRNA-Seq data (Yang et al., obtained from https://twc-stanford.shinyapps.io/scrna_brain_covid19/)
+- 16.script_Harmony_snRNAseq_FBs_human_CP.R: Attempted Harmony analysis workflow snRNA-Seq human (Yang et al.) and snRNA-Seq mouse data from the Lehtinen lab (Dani et al.)
+- 17.script_CCA_Integration_Urvb_and_snRNAseq_FBs_human_CP_Workflow1.R: Attempted CCA analysis workflow 1 snRNA-Seq human (Yang et al.) and scRNA-Seq mouse data
+- 18.script_CCA_Integration_Urvb_and_snRNAseq_FBs_human_CP_Workflow2.R: Attempted CCA analysis workflow 2 snRNA-Seq human (Yang et al.) and scRNA-Seq mouse data
+- 19.script_BBKNN_Integration_Urvb_and_snRNAseq_FBs_human_CP.R: BBKNN analysis snRNA-Seq human (Yang et al.) and scRNA-Seq mouse data for ChP Fibroblast species object in Figure 7
 
 ## Public data
 
