@@ -2,24 +2,10 @@
 ## Run until log normalization
 ## Save seuratobject
 
-# options(repos = c(getOption("repos"), BiocManager::repositories()))
-# getOption("repos")
-# packrat::get_opts()
-# packrat::status()
-# packrat::snapshot()
-
 library('Seurat')
 library('dplyr')
 library('gridExtra')
 library('scater')
-
-# BiocManager::install("impute") version = "3.8")
-# BiocManager::install("preprocessCore") version = "3.8")
-# BiocManager::install("GO.db") version = "3.8")
-# BiocManager::install("AnnotationDbi") version = "3.8")
-# devtools::install_github('dambi/DisneyTool@seuratv3', host="github.ugent.be/api/v3", auth_token = 'e5ca75c8c2f815aa7f1195cb0b6b6a3190064707')
-#cutils::download.file("https://github.ugent.be/api/v3/repos/dambi/DisneyTool/tarball/master", destfile = "test.zip", method = "curl")
-library('DisneyTools')
 
 source('/home/clintdn/VIB/DATA/Sophie/RNA-seq_Sandra/CITEseq_Test/RAW_DATA/script_functions_COVID.R') #KEVIN
 

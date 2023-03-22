@@ -1,4 +1,4 @@
-## Ependymal 1 script: GSM_2677817
+## Script for processing 7- and 22-wo ChP 4V and LV samples from our lab
 ## Run until log normalization
 ## Save seuratobject
 
@@ -17,9 +17,9 @@ source('/home/clintdn/VIB/DATA/Sophie/RNA-seq_Sandra/CITEseq_Test/RAW_DATA/scrip
 ##### Getwd
 ########################################
 
-setwd("~/VIB/DATA/Roos/Daan 1/FB_datasets/GSE100320_Shah/")
+setwd("~/VIB/DATA/Roos/Daan 1/FB_datasets/")
 
-sampleName<-"GSM_2677817"
+sampleName<-"Urvb_datasets"
 sampleFolder<-paste0(sampleName,"/")
 
 experiment <- sampleName
@@ -47,14 +47,39 @@ source('~/VIB/DATA/Roos/Daan 1/script_functions.R')
 ################################################################################
 ########## LOAD DATA
 ################################################################################
-rawDataSparse <- Read10X(paste0(sampleFolder,"Raw/"))
-dim(rawDataSparse)
+rawData_1 <- as.matrix(Read10X("~/VIB/DATA/Roos/Daan 1/LpsNegFourVentr/filtered_gene_bc_matrices/mm10/"))
+rawData_2 <- as.matrix(Read10X("~/VIB/DATA/Roos/Daan 1/LpsNegLatVentr/filtered_gene_bc_matrices/mm10/"))
+rawData_3 <- as.matrix(Read10X("~/VIB/DATA/Roos/Nina/RVD5_Y4V/filtered_gene_bc_matrices/mm10/"))
+rawData_4 <- as.matrix(Read10X("~/VIB/DATA/Roos/Nina/RVD6_YLV/filtered_gene_bc_matrices/mm10/"))
 
-rawDataRNA<-as.matrix(rawDataSparse)
+### Change colnames
+colnames(rawData_1)<-paste0(colnames(rawData_1),"-1")
+colnames(rawData_2)<-paste0(colnames(rawData_2),"-2")
+colnames(rawData_3)<-paste0(colnames(rawData_3),"-3")
+colnames(rawData_4)<-paste0(colnames(rawData_4),"-4")
+
+### Check before merge
+cbind(head(rownames(rawData_1)),head(rownames(rawData_2)),head(rownames(rawData_3)),head(rownames(rawData_4)))
+cbind(tail(rownames(rawData_1)),tail(rownames(rawData_2)),tail(rownames(rawData_3)),tail(rownames(rawData_4)))
+
+dim(rawData_1)
+dim(rawData_2)
+dim(rawData_3)
+dim(rawData_4)
+
+sum(ncol(rawData_1),ncol(rawData_2),ncol(rawData_3),ncol(rawData_4))
+paste0("Nr of cells: ",c(ncol(rawData_1),ncol(rawData_2),ncol(rawData_3),ncol(rawData_4)))
+
+### Do merge
+rawDataRNA<-cbind(rawData_1, rawData_2,rawData_3,rawData_4)
 dim(rawDataRNA)
+diagnostics[['dimBeforeSeuratObj']]<-paste0(nrow(rawDataRNA)," genes - ",ncol(rawDataRNA)," cells")
 
 ### Remove some variables
-rm(rawDataSparse)
+rm(rawData_1)
+rm(rawData_2)
+rm(rawData_3)
+rm(rawData_4)
 
 #############################
 ########## PREP DATA
@@ -135,8 +160,7 @@ dim(colData(sce))
 # colnames(colData(sce))
 
 ### List samples
-listLabels<-sampleName
-
+listLabels<-c("RVD1_LpsNegFour","RVD2_LpsNegLat","RVD5_Y4V","RVD6_YLV")
 
 ##### Create metaData matrix (used for downstream analysis) #####
 metaData<-data.frame("staticNr"=colnames(rawDataRNA),"orig.ident"=listLabels[[1]], "nGene"=sce$detected,"nUMI"=sce$sum,
@@ -147,10 +171,10 @@ rownames(metaData)<-metaData$staticNr
 metaData$staticNr<-1
 
 
-# for(i in 2:length(listLabels)){
-#   toSearch<-paste0("-",i)
-#   metaData[grep(toSearch,rownames(metaData)), which(colnames(metaData)=="orig.ident")]<-listLabels[[i]]
-# }
+for(i in 2:length(listLabels)){
+  toSearch<-paste0("-",i)
+  metaData[grep(toSearch,rownames(metaData)), which(colnames(metaData)=="orig.ident")]<-listLabels[[i]]
+}
 
 table(metaData$orig.ident)
 
@@ -447,7 +471,7 @@ dim(sce)
 
 rawDataFiltered<-rawDataRNA[rownames(sce),colnames(sce)]
 dim(rawDataFiltered)
-# 27998  255
+# 27998  28646
 diagnostics[['dimBeforeSeuratObj']]<-paste0(nrow(rawDataFiltered)," genes - ",ncol(rawDataFiltered)," cells")
 
 ### Remove some variables
@@ -463,7 +487,7 @@ rm(rawData)
 seuratObj <- CreateSeuratObject(counts = rawDataFiltered, project = "seuratObj", min.cells = 3, min.features = 200)
 
 dim(seuratObj)
-#15937  253
+#15937  28646
 
 GetAssayData(seuratObj, assay = "RNA", slot="counts")[1:5,1:5]
 seuratObj[['RNA']]@counts[1:5,1:5]
@@ -485,10 +509,14 @@ dev.off()
 
 ##### Add orig ident
 metaDataTable<-seuratObj@meta.data
-metaDataTable$orig.ident<-as.character(metaDataTable$orig.ident)
-metaDataTable[, which(colnames(metaDataTable)=="orig.ident")]<-sampleName
 
+metaDataTable$orig.ident<-as.character(metaDataTable$orig.ident)
+for(i in 1:length(listLabels)){
+  toSearch<-paste0('-',i)
+  metaDataTable[grep(toSearch,rownames(metaDataTable)), which(colnames(metaDataTable)=="orig.ident")]<-listLabels[[i]]
+}
 seuratObj@meta.data<-metaDataTable
+
 head(metaDataTable)
 table(metaDataTable$orig.ident)
 
