@@ -1,5 +1,6 @@
 ## Script for merging our datasets with public datasets to investigate the origin of our FBs
 ## Initial basic Seurat and Harmony workflow script to create Fibroblast origin complete object in Figure 1 manuscript
+## Rebuttal: Stronger harmony settings
 
 library(Seurat)
 library(SingleCellExperiment)
@@ -55,27 +56,39 @@ seuratObj7<-readRDS(file="Atlas_Zeisel/Robjects/seuratObj_Ependymal_cells_atlas.
 
 ####################################
 
-## Seuratobject Daan and Nina
+## Seuratobject Daan and Nina (Updated!! Now no immune cells or CPE cells!!)
 
-seuratObj8<-readRDS(file="Urvb_datasets/Robjects/seuratObj_final_Urvb_datasets.rds")
+seuratObj8<-readRDS(file="Urvb_datasets_rebuttal//Robjects/seuratObj_final_Urvb_datasets_rebuttal.rds")
+
+################################################################################
+
+## Update Seuratobjects (Now in R 4.0.5)
+seuratObj2<-UpdateSeuratObject(seuratObj2)
+seuratObj3<-UpdateSeuratObject(seuratObj3)
+seuratObj4<-UpdateSeuratObject(seuratObj4)
+seuratObj5<-UpdateSeuratObject(seuratObj5)
+seuratObj6<-UpdateSeuratObject(seuratObj6)
+seuratObj7<-UpdateSeuratObject(seuratObj7)
+seuratObj8<-UpdateSeuratObject(seuratObj8)
 
 ################################################################################
 ################################################################################
+
 
 ## Prepare folders
-dir.create("Merge")
-dir.create("Merge/Plots")
-dir.create("Merge/Plots/RNA")
-dir.create("Merge/Robjects")
+dir.create("Rebuttal_mouse_data/Full_merge/")
+dir.create("Rebuttal_mouse_data/Full_merge/Plots")
+dir.create("Rebuttal_mouse_data/Full_merge/Plots/RNA")
+dir.create("Rebuttal_mouse_data/Full_merge/Robjects")
 
-output.dir<-"Merge/"
+output.dir<-"Rebuttal_mouse_data/Full_merge/"
 
 ## Merge all seuratobjects
-seuratObj <- merge(seuratObj1, y = c(seuratObj2,seuratObj3,seuratObj4,seuratObj5,seuratObj6,seuratObj7,seuratObj8), 
+seuratObj <- merge(seuratObj1, y = c(seuratObj2,seuratObj3,seuratObj4,seuratObj5,seuratObj6,seuratObj7,seuratObj8),
                    add.cell.ids = c("FB1","EP1","EP2","EP3","VASC1","VASC2","EP4","URVB"), project = "FB_merge", merge.data = T)
 
 dim(seuratObj)
-# [1] 29625 55067
+# [1] 29623 30800
 
 diagnostics<-list()
 
@@ -106,19 +119,33 @@ DefaultAssay(object = seuratObj)<-"RNA"
 library('cowplot')
 library("harmony")
 
+## Extra split for different thetas
+levels(as.factor(seuratObj$orig.ident))
+seuratObj@meta.data$sample_origin<-as.factor(seuratObj@meta.data$orig.ident)
+levels(seuratObj@meta.data$sample_origin)<-c("FB_DeSisto_et_al_1","FB_DeSisto_et_al_2","FB_DeSisto_et_al_3",
+                                             "Ependymal_Zeisel_et_al","Vascular_Vanlandewijck_et_al",
+                                             "Ependymal_Shah_et_al_1","Ependymal_Shah_et_al_2","Ependymal_Shah_et_al_3",
+                                             "CP_LpsNeg_4V_Urvb","CP_LpsNeg_LV_Urvb","CP_Young_4V_Urvb","CP_Young_LV_Urvb",
+                                             "Vascular_Zeisel_et_al")
+seuratObj$Dataset <- as.factor(seuratObj@meta.data$orig.ident)
+levels(seuratObj@meta.data$Dataset)<-c("FB_DeSisto_et_al","FB_DeSisto_et_al","FB_DeSisto_et_al",
+                                       "Ependymal_Zeisel_et_al","Vascular_Vanlandewijck_et_al",
+                                       "Ependymal_Shah_et_al","Ependymal_Shah_et_al","Ependymal_Shah_et_al",
+                                       "Verhaege_et_al","Verhaege_et_al","Verhaege_et_al","Verhaege_et_al",
+                                       "Vascular_Zeisel_et_al")
+
 ########## Create vlnPlot before running Harmony ##########
 options(repr.plot.height = 6, repr.plot.width = 12)
-p1 <- DimPlot(object = seuratObj, reduction = "pca", pt.size = 0.2, group.by = "orig.ident")
-p2 <- VlnPlot(object = seuratObj, features = "PC_1", pt.size = 0.2, group.by = "orig.ident")
+p1 <- DimPlot(object = seuratObj, reduction = "pca", pt.size = 0.2, group.by = "sample_origin")
+p2 <- VlnPlot(object = seuratObj, features = "PC_1", pt.size = 0.2, group.by = "sample_origin")
 plot_grid(p1,p2)
-# ggsave(plot_grid(p1, p2), file=paste0(output.dir,"Plots/RNA/1a_vlnPlot_beforeAlignment.png"))
+ggsave(plot_grid(p1, p2), file=paste0(output.dir,"Plots/RNA/1a_vlnPlot_beforeAlignment.png"), width = 12, height = 8)
 
 ########## Run Harmony ##########
 ### Increase theta parameter in case of bad overlap!
 options(repr.plot.height = 3, repr.plot.width = 6)
-seuratObj<-RunHarmony(seuratObj, group.by.vars = "orig.ident", theta = 2, plot_convergence = TRUE, nclust = 50,
-                      max.iter.cluster = 100, max.iter.harmony = 20, dims.use=1:40)
-
+seuratObj<-RunHarmony(seuratObj, group.by.vars = c("sample_origin","Dataset"), theta = c(2,4), plot_convergence = TRUE, nclust = 50,
+                      max.iter.cluster = 100, max.iter.harmony = 20, dims.use=1:40) #V1
 
 ### Get embeddings
 harmony_embeddings <- Embeddings(seuratObj, 'harmony')
@@ -127,10 +154,10 @@ harmony_embeddings[1:5, 1:5]
 
 ########## Create vlnPlot after running Harmony ##########
 options(repr.plot.height = 6, repr.plot.width = 12)
-p1 <- DimPlot(object = seuratObj, reduction = "harmony", pt.size = 0.2, group.by = "orig.ident")
-p2 <- VlnPlot(object = seuratObj, features = "harmony_1", pt.size = 0.2, group.by = "orig.ident")
+p1 <- DimPlot(object = seuratObj, reduction = "harmony", pt.size = 0.2, group.by = "sample_origin")
+p2 <- VlnPlot(object = seuratObj, features = "harmony_1", pt.size = 0.2, group.by = "sample_origin")
 plot_grid(p1,p2)
-# ggsave(plot_grid(p1, p2), file=paste0(output.dir,"Plots/RNA/1b_vlnPlot_afterAlignment.png"))
+ggsave(plot_grid(p1, p2), file=paste0(output.dir,"Plots/RNA/1b_vlnPlot_afterAlignment.png"), width = 12, height = 8)
 
 
 ########################################
@@ -150,7 +177,7 @@ dev.off()
 ElbowPlot(object = seuratObj, ndims = 40)
 
 
-dimsToTry<-c(seq(20,40,by=5))
+dimsToTry<-c(seq(15,40,by=5))
 
 resToUse<-0.8
 
@@ -161,15 +188,6 @@ for(maxPCs in dimsToTry){
   ##### Find clusters
   seuratObj <- FindNeighbors(object = seuratObj, reduction = "harmony", dims = dimsToUse)
   seuratObj <- FindClusters(object = seuratObj, resolution = resToUse)
-  
-  ##### Create tSNE plot
-  seuratObj <- RunTSNE(object = seuratObj, dims = dimsToUse, assay = "RNA", reduction = "harmony")
-  tsnePlot<-DimPlot(seuratObj, reduction = "tsne", label=T, label.size = 8)
-  tsnePlotSplit<-DimPlot(seuratObj, reduction = "tsne", label=F, group.by="orig.ident", pt.size = 2)
-  
-  ggsave(grid.arrange(tsnePlot, tsnePlotSplit, ncol=2),
-         file=paste0(output.dir,"Plots/RNA/10a_tSNE_",min(dimsToUse),"-",max(dimsToUse),".png"), width = 20, height=10)
-  
   
   ##### Create UMAP plot
   seuratObj <- RunUMAP(seuratObj, dims = dimsToUse, n_neighbors = 30, assay = "RNA", reduction ="harmony")
@@ -188,7 +206,7 @@ for(maxPCs in dimsToTry){
 ################################################################################
 
 ### Final
-dimsToTry<-c(40)
+dimsToTry<-c(15)
 resToUse<-0.8
 diagnostics[['dimsPC']]<-dimsToTry
 diagnostics[['res']]<-resToUse
@@ -200,15 +218,6 @@ for(maxPCs in dimsToTry){
   ##### Find clusters
   seuratObj <- FindNeighbors(object = seuratObj, reduction = "harmony", dims = dimsToUse)
   seuratObj <- FindClusters(object = seuratObj, resolution = resToUse)
-  
-  ##### Create tSNE plot
-  seuratObj <- RunTSNE(object = seuratObj, dims = dimsToUse, assay = "RNA", reduction = "harmony")
-  tsnePlot<-DimPlot(seuratObj, reduction = "tsne", label=T, label.size = 8)
-  tsnePlotSplit<-DimPlot(seuratObj, reduction = "tsne", label=F, group.by="orig.ident", pt.size = 2)
-  
-  ggsave(grid.arrange(tsnePlot, tsnePlotSplit, ncol=2),
-         file=paste0(output.dir,"Plots/RNA/10a_tSNE_",min(dimsToUse),"-",max(dimsToUse),".png"), width = 20, height=10)
-  
   
   ##### Create UMAP plot
   seuratObj <- RunUMAP(seuratObj, dims = dimsToUse, n_neighbors = 30, assay = "RNA", reduction ="harmony")
@@ -224,8 +233,9 @@ names(seuratObj)
 
 ### Clustering: trying out clusTree
 
-Perplexity<-40
+Perplexity<-15
 Resolution<-0.8
+Perplexity_UMAP<-15
 
 seuratObj <- FindNeighbors(object = seuratObj, reduction = "harmony", dims = 1:Perplexity)
 resolutions <- seq(0,1,by=0.1)
@@ -251,20 +261,14 @@ seuratObj$harmony_clusters <- seuratObj$RNA_snn_res.0.8
 ################################################################################
 ################################################################################
 
-# seuratObj <- RunTSNE(seuratObj, reduction = "SCT_pca", dims = 1:Perplexity, assay = "SCT")
-TSNEPlot(seuratObj)
-
-# seuratObj <- RunUMAP(seuratObj, dims = 1:Perplexity_UMAP, reduction = "SCT_pca", assay = "SCT")
 umapPlot<-DimPlot(seuratObj, reduction = "umap", label = T, group.by= "harmony_clusters", label.size = 6)
-tsnePlot<-TSNEPlot(seuratObj, reduction = "tsne", label = T, group.by= "harmony_clusters", label.size = 6)
 seuratObj@active.assay
 
-pdf(file=paste0(output.dir,"Plots/RNA/11_tSNE_UMAP.pdf"), width = 17*0.45, height = 12.4*0.45)
+pdf(file=paste0(output.dir,"Plots/RNA/11_UMAP.pdf"), width = 17*0.45, height = 12.4*0.45)
 umapPlot
-tsnePlot
 dev.off()
 
-experiment<-"Merge_FB_datasets"
+experiment<-"Rebuttal2_Full_merge_FB_datasets"
 
 # Save objects
 saveRDS(seuratObj, file = paste0(output.dir,"Robjects/seuratObj_",experiment,"_harmony_RNA.rds"))

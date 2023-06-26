@@ -1,6 +1,9 @@
 ## Script for processing 7- and 22-wo ChP 4V and LV samples from our lab
 ## Run until log normalization
 ## Save seuratobject
+## Rebuttal update: only include FBs and vascular cells this time, so no subset required later! Better for clustering too
+## Remove CPE and immune cells based on metadata of the objects!!
+
 
 library('Seurat')
 library('dplyr')
@@ -19,7 +22,7 @@ source('/home/clintdn/VIB/DATA/Sophie/RNA-seq_Sandra/CITEseq_Test/RAW_DATA/scrip
 
 setwd("~/VIB/DATA/Roos/Daan 1/FB_datasets/")
 
-sampleName<-"Urvb_datasets"
+sampleName<-"Urvb_datasets_rebuttal"
 sampleFolder<-paste0(sampleName,"/")
 
 experiment <- sampleName
@@ -52,26 +55,91 @@ rawData_2 <- as.matrix(Read10X("~/VIB/DATA/Roos/Daan 1/LpsNegLatVentr/filtered_g
 rawData_3 <- as.matrix(Read10X("~/VIB/DATA/Roos/Nina/RVD5_Y4V/filtered_gene_bc_matrices/mm10/"))
 rawData_4 <- as.matrix(Read10X("~/VIB/DATA/Roos/Nina/RVD6_YLV/filtered_gene_bc_matrices/mm10/"))
 
+
+seuratObj_1 <- readRDS(file = "~/VIB/DATA/Roos/Daan 1/LpsNegFourVentr/Robjects/seuratObj_final_LpsNegFourVentr.rds")
+seuratObj_2 <- readRDS(file = "~/VIB/DATA/Roos/Daan 1/LpsNegLatVentr/Robjects/seuratObj_sliced3_LpsNegLatVentr.rds")
+seuratObj_3 <- readRDS(file = "/run/media/clintdn/CN1465-DATA/VIB_G_drive/Nina/RVD5_Y4V/Robjects/seuratObj_RVD5_Y4V.rds")
+seuratObj_4 <- readRDS(file = "/run/media/clintdn/CN1465-DATA/VIB_G_drive/Nina/RVD6_YLV/Robjects/seuratObj_RVD6_YLV.rds")
+
+##Annotation
+## LpsNeg4V
+## Update 04/03/21
+seuratObj_1@meta.data$annotated_clusters <- seuratObj_1@active.ident
+seuratObj_1@meta.data$annotated_clusters<- factor(seuratObj_1@meta.data$annotated_clusters,levels(seuratObj_1@meta.data$annotated_clusters)[c(2:17,1)]) #reorder levels
+levels(seuratObj_1@meta.data$annotated_clusters) <- c(rep("Epithelial cells",2), "Macrophages", "Endothelial cells", rep("Epithelial cells",2),"Fibroblasts Type 1", 
+                                                      "Macrophages", "Epithelial cells", "Vascular associated cells", "NK cells",  "Fibroblasts Type 2",
+                                                      "Doublets", rep("Other immune cells",3), "Doublets 2")  # based on markers (change 7.11.19 cl12 to doublets)
+
+## LpsNegLV
+### Create annotated UMAP ###
+seuratObj_2@meta.data$annotated_clusters <- seuratObj_2@active.ident
+seuratObj_2@meta.data$annotated_clusters <- factor(seuratObj_2@meta.data$annotated_clusters,levels(seuratObj_2@meta.data$annotated_clusters)[c(5:18,4,3,2,1)]) #reorder levels
+levels(seuratObj_2@meta.data$annotated_clusters) <- c(rep("Epithelial cells",4), "Macrophages",rep("Epithelial cells",3), "Endothelial cells", "Fibroblasts", 
+                                                      "Microglia-like Macrophages", "Other immune cells", "Vascular associated cells", "Other immune cells","Neuronal cells", 
+                                                      "Doublets", "Xist+ Epithelial cells","NK cells")  # based on markers
+
+## Y4V
+### Create annotated UMAP
+seuratObj_3@meta.data$annotated_clusters <- seuratObj_3@active.ident
+# seuratObj_3@meta.data$annotated_clusters <- factor(seuratObj_3@meta.data$annotated_clusters,levels(seuratObj_3@meta.data$annotated_clusters)[c(3:15,2,1)]) #reorder levels
+levels(seuratObj_3@meta.data$annotated_clusters) <- c("Epithelial cells 1","Epithelial cells 2","Epithelial cells 1","Endothelial cells","Macrophages",'Fibroblasts Type 1',
+                                                      'Epithelial cells 2','Epithelial cells 1',"Vascular associated cells",'Epithelial cells 1',"Doublets_1",
+                                                      "Doublets_2",'NK cells','Other Macrophages','Other Immune Cells','Doublets_3',"Fibroblasts Type 2","Doublets_4") #split
+
+## YLV
+### Create annotated UMAP
+seuratObj_4@meta.data$annotated_clusters <- seuratObj_4@active.ident
+# seuratObj_4@meta.data$annotated_clusters <- factor(seuratObj_4@meta.data$annotated_clusters,levels(seuratObj_4@meta.data$annotated_clusters)[c(3:15,2,1)]) #reorder levels
+levels(seuratObj_4@meta.data$annotated_clusters) <- c("Epithelial cells","Epithelial cells","Epithelial cells","Epithelial cells","Epithelial cells","Epithelial cells",
+                                                      "Epithelial cells","Epithelial cells","Epithelial cells","Endothelial cells","Macrophages","Vascular associated cells",
+                                                      'Fibroblasts',"Doublets_1","Doublets_2",'NK cells','Other Immune Cells','Microglia-like Macrophages')
+
+## Update idents
+Idents(seuratObj_1)<-seuratObj_1@meta.data$annotated_clusters
+Idents(seuratObj_2)<-seuratObj_2@meta.data$annotated_clusters
+Idents(seuratObj_3)<-seuratObj_3@meta.data$annotated_clusters
+Idents(seuratObj_4)<-seuratObj_4@meta.data$annotated_clusters
+
+## Check annotation
+DimPlot(seuratObj_1, reduction = "umap", label = T, repel = T, label.size = 4)
+DimPlot(seuratObj_2, reduction = "umap", label = T, repel = T, label.size = 4)
+DimPlot(seuratObj_3, reduction = "umap", label = T, repel = T, label.size = 4)
+DimPlot(seuratObj_4, reduction = "umap", label = T, repel = T, label.size = 4)
+
+## Choose FBs
+Cells1<-WhichCells(seuratObj_1, idents = c("Fibroblasts Type 1", "Fibroblasts Type 2","Endothelial cells","Vascular associated cells"))
+Cells2<-WhichCells(seuratObj_2, idents = c("Fibroblasts","Endothelial cells","Vascular associated cells","Neuronal cells"))
+Cells3<-WhichCells(seuratObj_3, idents = c("Fibroblasts Type 1", "Fibroblasts Type 2","Endothelial cells","Vascular associated cells"))
+Cells4<-WhichCells(seuratObj_4, idents = c("Fibroblasts","Endothelial cells","Vascular associated cells"))
+
+## Subset rawData
+rawData_1_subset<-rawData_1[,Cells1]
+rawData_2_subset<-rawData_2[,Cells2]
+rawData_3_subset<-rawData_3[,Cells3]
+rawData_4_subset<-rawData_4[,Cells4]
+
 ### Change colnames
-colnames(rawData_1)<-paste0(colnames(rawData_1),"-1")
-colnames(rawData_2)<-paste0(colnames(rawData_2),"-2")
-colnames(rawData_3)<-paste0(colnames(rawData_3),"-3")
-colnames(rawData_4)<-paste0(colnames(rawData_4),"-4")
+colnames(rawData_1_subset)<-paste0(colnames(rawData_1_subset),"-1")
+colnames(rawData_2_subset)<-paste0(colnames(rawData_2_subset),"-2")
+colnames(rawData_3_subset)<-paste0(colnames(rawData_3_subset),"-3")
+colnames(rawData_4_subset)<-paste0(colnames(rawData_4_subset),"-4")
 
 ### Check before merge
-cbind(head(rownames(rawData_1)),head(rownames(rawData_2)),head(rownames(rawData_3)),head(rownames(rawData_4)))
-cbind(tail(rownames(rawData_1)),tail(rownames(rawData_2)),tail(rownames(rawData_3)),tail(rownames(rawData_4)))
+cbind(head(rownames(rawData_1_subset)),head(rownames(rawData_2_subset)),head(rownames(rawData_3_subset)),
+      head(rownames(rawData_4_subset)))
+cbind(tail(rownames(rawData_1_subset)),tail(rownames(rawData_2_subset)),tail(rownames(rawData_3_subset)),
+      tail(rownames(rawData_4_subset)))
 
-dim(rawData_1)
-dim(rawData_2)
-dim(rawData_3)
-dim(rawData_4)
+dim(rawData_1_subset)
+dim(rawData_2_subset)
+dim(rawData_3_subset)
+dim(rawData_4_subset)
 
-sum(ncol(rawData_1),ncol(rawData_2),ncol(rawData_3),ncol(rawData_4))
-paste0("Nr of cells: ",c(ncol(rawData_1),ncol(rawData_2),ncol(rawData_3),ncol(rawData_4)))
+sum(ncol(rawData_1_subset),ncol(rawData_2_subset),ncol(rawData_3_subset),ncol(rawData_4_subset))
+#4379 cells
 
 ### Do merge
-rawDataRNA<-cbind(rawData_1, rawData_2,rawData_3,rawData_4)
+rawDataRNA<-cbind(rawData_1_subset, rawData_2_subset,rawData_3_subset,rawData_4_subset)
 dim(rawDataRNA)
 diagnostics[['dimBeforeSeuratObj']]<-paste0(nrow(rawDataRNA)," genes - ",ncol(rawDataRNA)," cells")
 
@@ -80,6 +148,7 @@ rm(rawData_1)
 rm(rawData_2)
 rm(rawData_3)
 rm(rawData_4)
+gc()
 
 #############################
 ########## PREP DATA
@@ -136,26 +205,9 @@ sum(is.mito)
 ##13
 rownames(sce)[is.mito]
 
-#### Get RBC genes ####
-# working with a list detected in 3 different samples
-#rbc.genes <- c("ADIPOR1", "ALAS2", "BNIP3L", "HBA1", "HBB", "HBD", "HEMGN", "SNCA")
-rbc.genes <- c("ADIPOR1", "ALAS2", "ATP5E", "BAG1", "BCL2L1", "BNIP3L",
-               "BPGM", "BTF3", "CA1", "DCAF12", "EPB42", "FBXO7", "FKBP8",
-               "FTL", "GSPT1", "GUK1", "GYPC", "HBA1","HBB", "HBD", "HEMGN",
-               "MPP1", "MYL6", "NCOA4", "OAZ1", "PFDN5", "RNF10", "RPL12",
-               "RPL21", "RPL27A", "RPL30", "RPL31", "RPL32", "RPL38", "RPL41",
-               "RPL7", "RPLP1", "RPLP2", "RPS11", "RPS12", "RPS13", "RPS14",
-               "RPS24", "SELENBP1", "SERF2", "SLC25A37", "SLC25A39", "SNCA",
-               "TPT1", "UBA52", "UBB", "YBX3")
-is.rbc <- rownames(sce) %in% rbc.genes
-
-#### Get COVID genes
-covid.genes <- c("ORF1ab", "S", "ORF3a", "E", "M", "ORF6", "ORF7a", "ORF7b", "ORF8", "N", "ORF10")
-is.covid <- rownames(sce) %in% covid.genes
-
 ##### Calculate QC metrics #####
 ### => pData(sce) is created
-sce<- addPerCellQC(sce, subsets=list(Mito=is.mito, RBC=is.rbc, COVID=is.covid))
+sce<- addPerCellQC(sce, subsets=list(Mito=is.mito))
 dim(colData(sce))
 # colnames(colData(sce))
 
@@ -164,8 +216,7 @@ listLabels<-c("RVD1_LpsNegFour","RVD2_LpsNegLat","RVD5_Y4V","RVD6_YLV")
 
 ##### Create metaData matrix (used for downstream analysis) #####
 metaData<-data.frame("staticNr"=colnames(rawDataRNA),"orig.ident"=listLabels[[1]], "nGene"=sce$detected,"nUMI"=sce$sum,
-                     "percent.mito"=sce$subsets_Mito_percent, "percent.rbc"=sce$subsets_RBC_percent,
-                     "percent.COVID"=sce$subsets_COVID_percent,
+                     "percent.mito"=sce$subsets_Mito_percent,
                      stringsAsFactors = F)
 rownames(metaData)<-metaData$staticNr
 metaData$staticNr<-1
@@ -181,297 +232,15 @@ table(metaData$orig.ident)
 ##### Add to diagnostics #####
 diagnostics[['splitSamples']]<-paste0(table(metaData$orig.ident)," cells of sample ",rownames(table(metaData$orig.ident)))
 
-##############################
-########## FILTERING
-##############################
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ < MANUAL BIT?
-# start with 5 as more lenient thresholding or just do the low thresholding
-# and rely on doubletfinder for the high ranges?
-nmad_low_feature<-3
-nmad_high_feature<-3
-
-nmad_low_UMI<-3
-nmad_high_UMI<-3
-
-nmad_high_mito<-3
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ > MANUAL BIT?
-
-##### Aim: remove cells with low library sizes, low numbers of expressed features and with high mitochondrial proportions
-##same as nGene in Seurat pipeline
-feature.drop.low <- isOutlier(sce$detected, nmads=nmad_low_feature, type="lower", log=TRUE,batch = batch)
-sum(feature.drop.low)
-
-feature.drop.high <- isOutlier(sce$detected, nmads=nmad_high_feature, type="higher", log=TRUE,batch = batch)
-sum(feature.drop.high)
-
-feature.drop<-as.logical(feature.drop.low + feature.drop.high,batch = batch)
-sum(feature.drop)
-
-##same as UMI in Seurat pipeline
-libsize.drop.low <- isOutlier(sce$sum, nmads=nmad_low_UMI, type="lower", log=TRUE,batch = batch)
-sum(libsize.drop.low)
-
-libsize.drop.high <- isOutlier(sce$sum, nmads=nmad_high_UMI, type="higher", log=TRUE,batch = batch)
-sum(libsize.drop.high)
-
-libsize.drop<-as.logical(libsize.drop.low+libsize.drop.high)
-sum(libsize.drop)
-
-##% mitochondrial genes
-mito.drop.high <- isOutlier(sce$subsets_Mito_percent, nmads=nmad_high_mito, type="higher",batch = batch)
-sum(mito.drop.high)
-
-mito.drop<-as.logical(mito.drop.high)
-sum(mito.drop)
-
-##### add to metaData matrix #####
-metaData$nGene.drop=feature.drop
-metaData$nUMI.drop=libsize.drop
-metaData$mito.drop=mito.drop
-metaData$final.drop=feature.drop | libsize.drop | mito.drop
-metaData$batch <- batch
-
-##### Add to diagnostics #####
-diagnostics[['nmad.low.feature']]<-nmad_low_feature
-diagnostics[['nmad.high.feature']]<-nmad_high_feature
-diagnostics[['nmad.low.libsize']]<-nmad_low_UMI
-diagnostics[['nmad.high.libsize']]<-nmad_high_UMI
-diagnostics[['nmad.high.mito']]<-nmad_high_mito
-
-diagnostics[['feature.drop.low']]<-sum(feature.drop.low)
-diagnostics[['feature.drop.high']]<-sum(feature.drop.high)
-diagnostics[['feature.drop']]<-sum(feature.drop)
-diagnostics[['libsize.drop.low']]<-sum(libsize.drop.low)
-diagnostics[['libsize.drop.high']]<-sum(libsize.drop.high)
-diagnostics[['libsize.drop']]<-sum(libsize.drop)
-diagnostics[['mito.drop.high']]<-sum(mito.drop.high)
-diagnostics[['mito.drop']]<-sum(mito.drop)
-
-########################################
-########## PLOTS
-########################################
-palette(c("#00BFC4","#F8766D","#7CAE00","#C77CFF"))
-###F8766D=red
-###00BFC4=cyan
-###7CAE00=green
-###C77CFF=purple
-
-toPlot<-metaData
-
-##nGene
-png(file=paste0(output.dir,"results/QC/01a_nGene.png"), width=850)
-par(mfrow=c(1,2))
-tmp<-toPlot[order(toPlot$nGene),]
-hist(tmp$nGene, breaks=30)
-theColors<-as.factor(tmp$nGene.drop)
-barplot(tmp$nGene, col=theColors, border=theColors)
-dev.off()
-
-##nUMI
-png(file=paste0(output.dir,"results/QC/01a_nUMI.png"), width=850)
-par(mfrow=c(1,2))
-tmp<-toPlot[order(toPlot$nUMI),]
-hist(tmp$nUMI, breaks=30)
-theColors<-as.factor(tmp$nUMI.drop)
-barplot(tmp$nUMI, col=theColors, border=theColors)
-dev.off()
-
-##percent.mito
-png(file=paste0(output.dir,"results/QC/01a_percMito.png"), width=850)
-par(mfrow=c(1,2))
-tmp<-toPlot[order(toPlot$percent.mito),]
-hist(tmp$percent.mito, breaks=30)
-theColors<-as.factor(tmp$mito.drop)
-barplot(tmp$percent.mito, col=theColors, border=theColors)
-dev.off()
-
-# calculating some limits for the plots
-# ul.mito <- median(metaData$percent.mito)+nmad_high_mito*mad(metaData$percent.mito,na.rm = TRUE)
-# ll.cd <- median(metaData$nUMI)-nmad_low_UMI*mad(metaData$nUMI,na.rm = TRUE)
-# ul.cd <- median(metaData$nUMI)+nmad_high_UMI*mad(metaData$nUMI,na.rm = TRUE)
-# ll.ng <- median(metaData$nGene)-nmad_low_feature*mad(metaData$nGene,na.rm = TRUE)
-# ul.ng <- median(metaData$nGene)+nmad_high_feature*mad(metaData$nGene,na.rm = TRUE)
-
-ul.mito <- attr(mito.drop.high,'thresholds')[2]
-ll.cd <- attr(libsize.drop.low,'thresholds')[1]
-ul.cd <- attr(libsize.drop.high,'thresholds')[2]
-ll.ng <- attr(feature.drop.low,'thresholds')[1]
-ul.ng <- attr(feature.drop.high,'thresholds')[2]
-
-png(file=paste0(output.dir,"results/QC/01b_histogram_countdepth.png"), width=850)
-ggplot(metaData, aes(x = nUMI)) +
-  geom_histogram(binwidth=100) +
-  xlab("Count depth (total UMI count)") +
-  ylab("Frequency") +
-  geom_vline(xintercept=ul.cd,
-             color = "red", size=1) +
-  geom_vline(xintercept=ll.cd,
-             color = "red", size=1) +
-  facet_grid(.~batch) +
-  theme_bw() # histogram of count depth
-dev.off()
-
-png(file=paste0(output.dir,"results/QC/01b_histogram_genes.png"), width=850)
-ggplot(metaData, aes(x = nGene)) +
-  geom_histogram(binwidth=20) +
-  xlab("Number of Genes") +
-  ylab("Frequency") +
-  geom_vline(xintercept=ul.ng,
-             color = "red", size=1) +
-  geom_vline(xintercept=ll.ng,
-             color = "red", size=1) +
-  facet_grid(.~batch) +
-  theme_bw() # histogram of nr of genes
-dev.off()
-
-png(file=paste0(output.dir,"results/QC/01b_histogram_percentageMito.png"), width=850)
-ggplot(metaData, aes(x = percent.mito)) +
-  geom_histogram(binwidth=0.1) +
-  xlab("% Mitochondrial counts") +
-  ylab("Frequency") +
-  geom_vline(xintercept=ul.mito,
-             color = "red", size=1) +
-  facet_grid(.~batch) +
-  theme_bw() # histogram of % mito
-dev.off()
-
-png(file=paste0(output.dir,"results/QC/01c_scatterplot_filtering.png"), width=850)
-ggplot(metaData, aes(x = nUMI,y=nGene,colour=percent.mito)) +
-  geom_point(size=0.5) +
-  scale_color_gradient2(midpoint=ul.mito, low="black", mid="white",
-                        high="red", space ="Lab" )+
-  xlab("Count depth (total UMI count)") +
-  ylab("Nr of Genes") +
-  geom_vline(xintercept=ul.cd,
-             color = "red", size=1) +
-  geom_vline(xintercept=ll.cd,
-             color = "red", size=1) +
-  geom_hline(yintercept=ul.ng,
-             color = "red", size=1) +
-  geom_hline(yintercept=ll.ng,
-             color = "red", size=1) +
-  geom_rug(col=rgb(0,0,0.5,alpha=.1)) +
-  facet_grid(.~batch) +
-  theme_bw()
-dev.off()
-
-########################################
-########## Create violinPlots
-########################################
-
-toPlot<-metaData
-drawVlnPlot_out(toPlot, fileName = paste0(output.dir,"results/QC/02a_Outliers_nGene.png"), colsToColor = c('nGene.drop','nGene.drop','nGene.drop','nGene.drop','nGene.drop'))
-drawVlnPlot_out(toPlot, fileName = paste0(output.dir,"results/QC/02a_Outliers_nUMI.png"), colsToColor = c('nUMI.drop','nUMI.drop','nUMI.drop','nUMI.drop','nUMI.drop'))
-drawVlnPlot_out(toPlot, fileName = paste0(output.dir,"results/QC/02a_Outliers_percMito.png"), colsToColor = c('mito.drop','mito.drop','mito.drop','mito.drop','mito.drop'))
-
-GeneUmiMitodrops<-sum(metaData$final.drop)
-toPlot<-metaData
-
-#filename can be added to write the output to png file
-drawVlnPlot_color(toPlot,paste0(output.dir,"results/QC/02a_Outliers_colors_base.png"))
-drawVlnPlot_color_nGene(toPlot,paste0(output.dir,"results/QC/02a_Outliers_colors_nGene.png"))
-drawVlnPlot_color_nGene_mito(toPlot,paste0(output.dir,"results/QC/02a_Outliers_colors_nGene&mito.png"))
-drawVlnPlot_color_mito_extra(toPlot,paste0(output.dir,"results/QC/02a_Outliers_colors_Extra_mito.png"))
-drawVlnPlot_color_nGene_extra(toPlot,paste0(output.dir,"results/QC/02a_Outliers_colors_Extra_nGene.png"))
-drawVlnPlot_color_nUMI_extra(toPlot,paste0(output.dir,"results/QC/02a_Outliers_colors_Extra_nUMI.png"))
-
-### Before filtering
-toPlot<-metaData
-drawVlnPlot(toPlot, fileName = paste0(output.dir,"results/QC/02b_beforeFiltering.png"), colsToColor = c('nGene.drop','nUMI.drop','mito.drop',"percent.rbc","percent.COVID"))
-
-### After filtering
-toPlot<-metaData[! metaData$final.drop,]
-drawVlnPlot(toPlot, fileName = paste0(output.dir,"results/QC/02c_afterFiltering.png"), colsToColor = c('nGene.drop','nUMI.drop','mito.drop',"percent.rbc","percent.COVID"))
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ < MANUAL BIT
-# CHECK OUTPUT BEFORE REMOVING OUTLIERS!!
-
-
-########## Remove outliers
-########################################
-sce <- sce[,!(libsize.drop | feature.drop | mito.drop)]
-# dim(sce)
-### Number of cells removed
-# nrow(metaData)-ncol(sce)
-##### Add to diagnostics #####
-diagnostics[['firstRemove']]<-nrow(metaData)-ncol(sce)
-diagnostics[['dimFirstRemove']]<-paste0(nrow(sce)," genes - ",ncol(sce)," cells")
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ > MANUAL BIT
-
-########################################
-########## Create PCA
-########################################
-
-##(check via raw code of the function runPCA)
-varsToUse <- c("sum","detected", "subsets_Mito_percent")
-setdiff(colnames(colData(sce)),varsToUse)
-exprs_to_plot <- scale(colData(sce)[,varsToUse], scale = T)
-x.mad <- apply(exprs_to_plot, 2, mad)
-x.mad[x.mad==0]
-varsToUse<-setdiff(varsToUse, names(x.mad[x.mad==0]))
-sceNew<-runColDataPCA(sce, outliers=T, variables = varsToUse)
-
-##### Detect bad cells #####
-#sceNew<-runPCA(sce,use_coldata=T, detect_outliers=T)
-# table(sceNew$outlier)
-
-outs<-colnames(sceNew)[sceNew$outlier]
-### Add to metaData
-metaData$pca.drop<-metaData$final.drop
-metaData[outs,which(colnames(metaData)=="pca.drop")]<-TRUE
-
-##### Color bad cells on PCA plot #####
-colorDF<-as.data.frame(cbind(colnames(sceNew),"1"), stringsAsFactors=F)
-rownames(colorDF)<-colorDF[,1]
-colorDF[outs,2]<-"2"
-colorDF[,2]<-as.factor(colorDF[,2])
-tmp<-colorDF[,2,drop=F]
-
-png(file=paste0(output.dir,"results/QC/03a_PCA.png"),  width = 850, height = 642)
-plotReducedDim(sceNew, dimred = "PCA_coldata", colour_by='outlier',shape_by='outlier') + labs(title="PCA with outliers colored")
-dev.off()
-
-
-#### Add to metaData table ####
-pca.drop<-metaData[colnames(sce),"pca.drop"]
-# sum(pca.drop)
-
-##### Create violinplots ####
-##Before
-toPlot<-metaData[! metaData$final.drop,]
-drawVlnPlot_out(toPlot, fileName = paste0(output.dir,"results/QC/03b_beforePcaFiltering.png"), colsToColor = c(rep('pca.drop',5)))
-
-##After
-toPlot<-metaData[! metaData$pca.drop,]
-drawVlnPlot_out(toPlot, fileName = paste0(output.dir,"results/QC/03c_afterPcaFiltering.png"), colsToColor = c(rep('pca.drop',5)))
-
-
-# ##### Add to diagnostics #####
-# diagnostics[['pcaRemove']]<-0
-# diagnostics[['pcaRemove']]<-sum(pca.drop)
-# diagnostics[['totalRemove']]<-nrow(metaData)-ncol(sce)
-# #
-# # ##### Remove outlier cells #####
-# sce <- sce[,!(pca.drop)]
-# dim(sce)
-# diagnostics[['dimAfterPCA']]<-paste0(nrow(sce)," genes - ",ncol(sce)," cells")
-#
-# ### Remove some variables
-rm(sceNew)
-
-
-
 ################################################################################
 ########## FINALIZE QC
 ################################################################################
 
 dim(sce)
-# saveRDS(sce, file=paste0(sampleFolder,"Robjects/sce.rds"))
-# sce <- readRDS(file=paste0(sampleFolder,"Robjects/sce.rds"))
 
 rawDataFiltered<-rawDataRNA[rownames(sce),colnames(sce)]
 dim(rawDataFiltered)
-# 27998  28646
+# 27998  4379
 diagnostics[['dimBeforeSeuratObj']]<-paste0(nrow(rawDataFiltered)," genes - ",ncol(rawDataFiltered)," cells")
 
 ### Remove some variables
@@ -487,7 +256,7 @@ rm(rawData)
 seuratObj <- CreateSeuratObject(counts = rawDataFiltered, project = "seuratObj", min.cells = 3, min.features = 200)
 
 dim(seuratObj)
-#15937  28646
+#14582  4379
 
 GetAssayData(seuratObj, assay = "RNA", slot="counts")[1:5,1:5]
 seuratObj[['RNA']]@counts[1:5,1:5]
@@ -529,10 +298,6 @@ diagnostics[['splitSamplesAfterFiltering']]<-paste0(table(metaDataTable$orig.ide
 ################################################################################
 seuratObj <- NormalizeData(object = seuratObj, normalization.method = "LogNormalize", scale.factor = 10000)
 
-### Get normalised values
-# GetAssayData(seuratObj, assay = "RNA", slot="data")[1:5,1:4]
-# seuratObj[['RNA']]@data[1:5,1:5]
-
 ##### Check per group #####
 metaDataTable<-seuratObj@meta.data
 metaDataTable$nUMI<-colSums(as.matrix(seuratObj[['RNA']]@data))
@@ -548,3 +313,16 @@ drawVlnPlotSeurat_split(metaDataTable, paste0(sampleFolder,"results/QC/5_afterNo
 ##### Save object
 saveRDS(seuratObj, file=paste0(sampleFolder,"Robjects/seuratObj_final_",sampleName,".rds"))
 saveRDS(diagnostics, file=paste0(sampleFolder,"Robjects/diagnostics_final_",sampleName,".rds"))
+
+
+## Save metadata
+metaData_FBs1<-seuratObj_1@meta.data[Cells1,c("orig.ident","annotated_clusters")]
+rownames(metaData_FBs1)<-paste0(rownames(metaData_FBs1),"_",1)
+metaData_FBs2<-seuratObj_2@meta.data[Cells2,c("orig.ident","annotated_clusters")]
+rownames(metaData_FBs2)<-paste0(rownames(metaData_FBs2),"_",2)
+metaData_FBs3<-seuratObj_3@meta.data[Cells3,c("orig.ident","annotated_clusters")]
+rownames(metaData_FBs3)<-paste0(rownames(metaData_FBs3),"_",3)
+metaData_FBs4<-seuratObj_4@meta.data[Cells4,c("orig.ident","annotated_clusters")]
+rownames(metaData_FBs4)<-paste0(rownames(metaData_FBs4),"_",4)
+metaData_FBs<-rbind(metaData_FBs1,metaData_FBs2,metaData_FBs3,metaData_FBs4)
+saveRDS(metaData_FBs, file = "Urvb_datasets_rebuttal/Robjects/MetaData_FBs.rds")

@@ -863,3 +863,549 @@ saveRDS(FB.combined_subset, file = paste0(sampleFolder,"Robjects/seuratObj_subse
 
 ##### Read object
 FB.combined_subset<- readRDS(file = paste0(sampleFolder,"Robjects/seuratObj_subset_",sampleName,".rds"))
+
+##############################################################################################################
+##############################################################################################################
+
+## Extra analysis for rebuttal
+## Remove non-FB mesenchymal cells from the Lethinen dataset
+## Performed in Seurat v4 and R4.0.5 -> objects updated!
+
+## Read object
+FB.combined_subset<- readRDS(file = paste0(sampleFolder,"Robjects/seuratObj_subset_",sampleName,".rds"))
+
+## Update object
+FB.combined_subset<-UpdateSeuratObject(FB.combined_subset)
+
+## Perform automatic annotation with these other cells included too!!
+## https://github.com/IanevskiAleksandr/sc-type
+
+# load libraries and functions
+lapply(c("dplyr","Seurat","HGNChelper"), library, character.only = T)
+# load gene set preparation function
+source("https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/R/gene_sets_prepare.R")
+# load cell type annotation function
+source("https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/R/sctype_score_.R")
+
+# Next, let's prepare gene sets from the input cell marker file. 
+# By default, we use our in-built cell marker DB, however, feel free to use your own data. 
+# Just prepare an input XLSX file in the same format as our DB file. 
+# DB file should contain four columns (tissueType - tissue type, cellName - cell type, 
+# geneSymbolmore1 - positive marker genes, geneSymbolmore2 - marker genes not expected to be expressed by a cell type)
+# In addition, provide a tissue type your data belongs to:
+
+# DB file
+db_ = "https://raw.githubusercontent.com/IanevskiAleksandr/sc-type/master/ScTypeDB_full.xlsx";
+tissue = "Brain" # e.g. Immune system, Liver, Pancreas, Kidney, Eye, Brain
+
+# Use own custom list
+gs_list_custom<-readRDS("Rebuttal_mouse_data/Automatic_coarse_annotation_file_rebuttal_scType_filtered.rds") #Filtered list Panglao -> Auto_annotation_coarse2
+
+# get cell-type by cell matrix
+## Switched back to scaled values -> better scores!!
+es.max = sctype_score(scRNAseqData = FB.combined_subset[["RNA"]]@data, scaled = F,
+                      gs = gs_list_custom, gs2 = NULL, gene_names_to_uppercase = F)
+
+# Please note that sctype_score function (used above) accepts both positive and negative markers through gs and gs2 arguments. 
+# In case, there are no negative markers (i.e. markers providing evidence against a cell being of specific cell type) 
+# just set gs2 argument to NULL (i.e. gs2 = NULL).
+
+# merge by cluster all
+cL_results = do.call("rbind", lapply(unique(FB.combined_subset@meta.data$Integrated_annotated_clusters), function(cl){
+  es.max.cl = sort(rowSums(es.max[ ,rownames(FB.combined_subset@meta.data[FB.combined_subset@meta.data$Integrated_annotated_clusters==cl, ])]), decreasing = !0)
+  head(data.frame(cluster = cl, type = names(es.max.cl), scores = es.max.cl, ncells = sum(FB.combined_subset@meta.data$Integrated_annotated_clusters==cl)), 10)
+}))
+sctype_scores = cL_results %>% group_by(cluster) %>% top_n(n = 1, wt = scores)  
+
+# set low-confident (low ScType score) clusters to "unknown"
+sctype_scores$type[as.numeric(as.character(sctype_scores$scores)) < sctype_scores$ncells/4] = "Unknown"
+print(sctype_scores[,1:3])
+
+FB.combined_subset@meta.data$Auto_annotation_coarse1 = ""
+for(j in unique(sctype_scores$cluster)){
+  cl_type = sctype_scores[sctype_scores$cluster==j,]; 
+  FB.combined_subset@meta.data$Auto_annotation_coarse1[FB.combined_subset@meta.data$Integrated_annotated_clusters == j] = as.character(cl_type$type[1])
+}
+
+## Save results
+Colorset1<-c(brewer.pal(12,"Set3")[c(1,5,10)],"maroon2",brewer.pal(12,"Set3")[c(12)])
+
+U_automatic<-DimPlot(FB.combined_subset, reduction = "umap", label = TRUE, repel = TRUE, group.by = 'Auto_annotation_coarse1', label.size = 3, cols = Colorset1)
+
+pdf(file = paste0(sampleFolder,"results/Rebuttal/8_Rebuttal_UMAP_automatic_coarse1_anno_filtered_",sampleName,".pdf"), width = 14, height = 10)
+U_automatic
+dev.off()
+
+write.xlsx(cL_results, file =paste0(sampleFolder, "results/Rebuttal/8_Rebuttal_Automatic_coarse1_annotation_scores_filtered_",sampleName,".xlsx"))
+
+################################################################################
+
+## Subset object
+FB.combined_subset_rebuttal<-subset(FB.combined_subset, idents = levels(Idents(FB.combined_subset))[c(1,5,6,7)])
+
+## Clean outlier cells
+U1<-DimPlot(FB.combined_subset_rebuttal, reduction = "umap", label = T)
+FB.combined_subset_rebuttal<- CellSelector(U1, object=FB.combined_subset_rebuttal, ident="Outliers1")
+FB.combined_subset_rebuttal<-subset(FB.combined_subset_rebuttal, idents = levels(Idents(FB.combined_subset_rebuttal))[-1])
+
+## Update annotations
+FB.combined_subset_rebuttal$Integrated_annotated_clusters<-as.factor(as.character(FB.combined_subset_rebuttal$Integrated_annotated_clusters))
+FB.combined_subset_rebuttal$newClustersTmp<-as.factor(as.character(FB.combined_subset_rebuttal$newClustersTmp))
+FB.combined_subset_rebuttal$newClusters<-as.factor(as.character(FB.combined_subset_rebuttal$newClusters))
+
+DefaultAssay(FB.combined_subset_rebuttal)<-"RNA"
+
+## Featureplots paper 
+features<-c("Dcn", "Dpep1", "Igfbp6" , "Cldn11")
+
+pdf(file=paste0(sampleFolder,"results/Rebuttal/Rebuttal_feature_plot_paper_4_markers_check_",sampleName,"_viridisC_ordered.pdf"), height = 10, width = 12)
+for (feature in features) {
+  F1<-FeaturePlot(object = FB.combined_subset_rebuttal, features =feature, cols = c("grey", "blue"), 
+                  reduction = "umap", min.cutoff = 'q2', max.cutoff = 'q98', pt.size = 1.5, order=T) +
+    scale_color_viridis(option = "C")
+  print(F1)
+}
+dev.off()
+
+
+## Increase dot size for paper
+FB.combined_subset_rebuttal@meta.data$Age<-factor(FB.combined_subset_rebuttal@meta.data$Age, levels = c("Embryonal", "7w", "22w", "82w"))
+U_age_big<-DimPlot(FB.combined_subset_rebuttal, reduction = "umap", label = F, group.by = "Age", repel = T, label.size = 4, pt.size = 1, 
+                   cols = c("deepskyblue2","springgreen3",'red2','chocolate1')) 
+pdf(file=paste0(sampleFolder,"results/Rebuttal/8_Rebuttal_UMAP_age_bigger_dots_",sampleName,".pdf"), width =13, height= 10)
+U_age_big
+dev.off()
+
+U_annot_big<-DimPlot(FB.combined_subset_rebuttal, reduction = "umap", label = T, group.by = "Integrated_annotated_clusters", repel = T, 
+                     label.size = 4, pt.size = 1)
+pdf(file=paste0(sampleFolder,"results/Rebuttal/8_Rebuttal_UMAP_annotated_bigger_dots_",sampleName,".pdf"), width =14, height= 10)
+U_annot_big
+dev.off()
+
+## Save numbered clustering in subsetted figure
+U_number_big<-DimPlot(FB.combined_subset_rebuttal, reduction = "umap", label = T, group.by = "Integrated_RNA_clusters", repel = T, label.size = 6, pt.size = 1) 
+pdf(file=paste0(sampleFolder,"results/Rebuttal/8_Rebuttal_UMAP_numbered_clustering_bigger_dots_",sampleName,".pdf"), width =12, height= 10)
+U_number_big
+dev.off()
+
+## Update numbered clustering in subsetted figure
+FB.combined_subset_rebuttal$Integrated_RNA_clusters_updated<-factor(as.character(FB.combined_subset_rebuttal$Integrated_RNA_clusters), levels = c(0,1,2,4,5,13))
+levels(FB.combined_subset_rebuttal$Integrated_RNA_clusters_updated)<-c(0,1,2,3,4,5)
+U_number_big<-DimPlot(FB.combined_subset_rebuttal, reduction = "umap", label = T, group.by = "Integrated_RNA_clusters_updated", repel = T, label.size = 6, pt.size = 1) 
+pdf(file=paste0(sampleFolder,"results/Rebuttal/8_Rebuttal_UMAP_updated_numbered_clustering_bigger_dots_",sampleName,".pdf"), width =12, height= 10)
+U_number_big
+dev.off()
+
+################################################################################
+
+## Sample distribution across timepoints
+
+## Create subset first of Stromal and Stalk FBs
+FB.combined_double_subset_rebuttal<-subset(FB.combined_subset_rebuttal, ident = c("Base Fibroblasts", "Stromal Fibroblasts"))
+DimPlot(FB.combined_double_subset_rebuttal)
+
+# create a dataset
+FB.combined_double_subset_rebuttal@meta.data$Age<-factor(FB.combined_double_subset_rebuttal@meta.data$Age, levels = c("Embryonal", "7w", "22w", "82w"))
+Sample <- FB.combined_double_subset_rebuttal@meta.data$Age
+cluster <- FB.combined_double_subset_rebuttal@active.ident
+
+data <- data.frame(table(Sample, cluster))
+
+##Controlled for amount of cells per sample (split by sample and divide counts by total cell count sample)
+data_split1<-data[which(data$Sample=="Embryonal"),]
+data_split2<-data[which(data$Sample=="7w"),]
+data_split3<-data[which(data$Sample=="22w"),]
+data_split4<-data[which(data$Sample=="82w"),]
+data_split1$Freq<-lapply(data_split1$Freq,function(x){x<-round((x/sum(data_split1$Freq))*100,2)})
+data_split2$Freq<-lapply(data_split2$Freq,function(x){x<-round((x/sum(data_split2$Freq))*100,2)})
+data_split3$Freq<-lapply(data_split3$Freq,function(x){x<-round((x/sum(data_split3$Freq))*100,2)})
+data_split4$Freq<-lapply(data_split4$Freq,function(x){x<-round((x/sum(data_split4$Freq))*100,2)})
+
+data_new<-rbind(data_split1,data_split2,data_split3,data_split4)
+
+# png(file=paste0(sampleFolder,"results/4_SampleDistribution_ggplot2_annot_1_",sampleName,"_adjusted.png"), width = 2000, height = 1500, res = 300)
+S2<-ggplot(data_new, aes(fill=Sample, y=Freq, x=cluster)) + theme_bw() + #scale_fill_manual(values=c('Blue','Red',"Turquoise")) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.6)) +
+  geom_bar(position="fill", stat="identity", colour="white")
+# dev.off()
+
+pdf(file=paste0(sampleFolder,"results/Rebuttal/8_Rebuttal_SampleDistribution_ggplot2_age_v2_",sampleName,"_adjusted.pdf"), width =4, height= 6)
+S2 + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) #Remove grid lines
+dev.off()
+
+
+## New order
+Idents(FB.combined_double_subset_rebuttal)<-FB.combined_double_subset_rebuttal$newClusters
+Idents(FB.combined_double_subset_rebuttal)<-factor(FB.combined_double_subset_rebuttal@active.ident, levels = levels(Idents(FB.combined_double_subset_rebuttal))[c(4,2,1,3,8,6,5,7)])
+DimPlot(FB.combined_double_subset_rebuttal)
+
+library(RColorBrewer)
+ColorSet<-brewer.pal(n =8, name = "Paired")[c(1,3,5,7,2,4,6,8)]
+
+V1<-VlnPlot(FB.combined_double_subset_rebuttal, features = c("Igfbp6","Cldn11","Dpep1","Alpl"), assay = "RNA", ncol = 4, cols = ColorSet) & theme(plot.margin = margin(0.5,0.5,0.5,1, "cm"))
+
+pdf(file=paste0(sampleFolder,"results/Rebuttal/8_Rebuttal_Violinplot_RNA_order_Roos_",sampleName,".pdf"), width = 25, height= 10)
+V1
+dev.off()
+
+################################################################################
+
+######################################
+##### Markers annotated clusters
+########################################
+
+### Find RNAmarkers for every Integrated cluster compared to all remaining cells, report only the positive ones
+library(future)
+plan("multiprocess", workers = 8)
+
+Idents(FB.combined_subset_rebuttal)
+
+RNAMarkers_integratedclus <- FindAllMarkers(FB.combined_subset_rebuttal, assay = "RNA", only.pos = TRUE)
+table(RNAMarkers_integratedclus$cluster)
+
+IntegratedMarkers_integratedclus <- FindAllMarkers(FB.combined_subset_rebuttal, assay = "integrated", only.pos = TRUE)
+table(IntegratedMarkers_integratedclus$cluster)
+
+saveRDS(RNAMarkers_integratedclus, file=paste0(sampleFolder,"/Robjects/Rebuttal_RNAmarkersList_integratedclus_annotated_",sampleName,".rds"))
+saveRDS(IntegratedMarkers_integratedclus, file=paste0(sampleFolder,"/Robjects/Rebuttal_IntegratedmarkersList_integratedclus_annotated_",sampleName,".rds"))
+
+### Create list with RNA markers
+totalNrIntegratedclusters_RNA<-names(table(RNAMarkers_integratedclus$cluster))
+RNAmarkersList_Integratedclus<-list()
+
+for(i in totalNrIntegratedclusters_RNA){
+  
+  tmp<-RNAMarkers_integratedclus[RNAMarkers_integratedclus$cluster==i,]
+  tmp$score<-tmp$pct.1/(tmp$pct.2+0.01)*tmp$avg_log2FC
+  
+  RNAmarkersList_Integratedclus[[i]]<-tmp[order(tmp$score, decreasing=TRUE),]
+}
+
+### Create list with integrated markers
+totalNrIntegratedclusters_Integrated<-names(table(IntegratedMarkers_integratedclus$cluster))
+IntegratedmarkersList_Integratedclus<-list()
+
+for(i in totalNrIntegratedclusters_Integrated){
+  
+  tmp<-IntegratedMarkers_integratedclus[IntegratedMarkers_integratedclus$cluster==i,]
+  tmp$score<-tmp$pct.1/(tmp$pct.2+0.01)*tmp$avg_log2FC
+  
+  IntegratedmarkersList_Integratedclus[[i]]<-tmp[order(tmp$score, decreasing=TRUE),]
+}
+
+### Write to Excel
+library('openxlsx')
+write.xlsx(RNAmarkersList_Integratedclus, file =paste0(sampleFolder, "results/Rebuttal/Rebuttal_RNAmarkersList_Integratedclus_annotated_",sampleName,".xlsx"))
+write.xlsx(IntegratedmarkersList_Integratedclus, file =paste0(sampleFolder, "results/Rebuttal/Rebuttal_IntegratedmarkersList_Integratedclus_annotated_",sampleName,".xlsx"))
+
+################################################################
+
+## Markers Daan volcanoplot with MAST method!!
+Idents(FB.combined_subset_rebuttal)<-FB.combined_subset_rebuttal$newClusters
+
+########## 2. GET MARKERS (everything!!) ##########
+getDEgenes<-function(ident1, ident2){
+  markersDiff <- FindMarkers(FB.combined_subset_rebuttal, ident.1 = ident1, ident.2 = ident2,
+                             logfc.threshold = 0.0, min.pct = 0.1, test.use = "MAST") #0.30, 0.10, min.diff.pct = 0.15
+  #markersDiff<-markersDiff[markersDiff$p_val_adj < 0.01,]
+  markersDiff<-markersDiff[order(markersDiff$avg_log2FC, decreasing = T),]
+  
+  markersDiff$geneSymbol<-rownames(markersDiff)
+  markersDiff$pct.1<-markersDiff$pct.1+0.001
+  markersDiff$pct.2<-markersDiff$pct.2+0.001
+  
+  markersDiff<-rbind(markersDiff[markersDiff$avg_log2FC > 0,] %>% dplyr::mutate(.,score=pct.1/pct.2*avg_log2FC),
+                     markersDiff[markersDiff$avg_log2FC < 0,] %>% dplyr::mutate(.,score=pct.2/pct.1*avg_log2FC))
+  markersDiff<-markersDiff[order(markersDiff$score, decreasing = T),]
+  return(markersDiff)
+}
+
+#### Get diff markers Stalk FBs 88w vs 7w #####
+library(future)
+plan("multiprocess", workers = 6)
+
+levels(Idents(FB.combined_subset_rebuttal))[grep("Base",levels(Idents(FB.combined_subset_rebuttal)))] 
+levels(Idents(FB.combined_subset_rebuttal))[grep("Stromal",levels(Idents(FB.combined_subset_rebuttal)))] 
+
+# Clusters to compare!!!!
+"Base Fibroblasts_22w"       
+"Base Fibroblasts_7w"       
+"Base Fibroblasts_82w"       
+"Base Fibroblasts_Embryonal"
+
+Base_82w_vs_Base_7w_volcano<-getDEgenes("Base Fibroblasts_82w","Base Fibroblasts_7w")
+Base_82w_vs_Base_7w_volcano<-Base_82w_vs_Base_7w_volcano[order(Base_82w_vs_Base_7w_volcano$avg_log2FC,decreasing = T),]
+head(Base_82w_vs_Base_7w_volcano)
+dim(Base_82w_vs_Base_7w_volcano)
+
+Base_22w_vs_Base_7w_volcano<-getDEgenes("Base Fibroblasts_22w","Base Fibroblasts_7w")
+Base_22w_vs_Base_7w_volcano<-Base_22w_vs_Base_7w_volcano[order(Base_22w_vs_Base_7w_volcano$avg_log2FC,decreasing = T),]
+head(Base_22w_vs_Base_7w_volcano)
+dim(Base_22w_vs_Base_7w_volcano)
+
+Base_82w_vs_Base_22w_volcano<-getDEgenes("Base Fibroblasts_82w","Base Fibroblasts_22w")
+Base_82w_vs_Base_22w_volcano<-Base_82w_vs_Base_22w_volcano[order(Base_82w_vs_Base_22w_volcano$avg_log2FC,decreasing = T),]
+head(Base_82w_vs_Base_22w_volcano)
+dim(Base_82w_vs_Base_22w_volcano)
+
+Base_adult_vs_embryo_volcano<-getDEgenes(c("Base Fibroblasts_82w","Base Fibroblasts_22w","Base Fibroblasts_7w"),"Base Fibroblasts_Embryonal")
+Base_adult_vs_embryo_volcano<-Base_adult_vs_embryo_volcano[order(Base_adult_vs_embryo_volcano$avg_log2FC,decreasing = T),]
+head(Base_adult_vs_embryo_volcano)
+dim(Base_adult_vs_embryo_volcano)
+
+##add to list
+listDiffMarkers_volcano<-tibble::lst(Base_82w_vs_Base_7w_volcano,Base_22w_vs_Base_7w_volcano,
+                                     Base_82w_vs_Base_22w_volcano,Base_adult_vs_embryo_volcano)
+
+lapply(listDiffMarkers_volcano, dim)
+
+##Add geneSymbol in column (for the export)
+listDiffMarkers_volcano<-lapply(listDiffMarkers_volcano,function(x){x<-cbind(x,'gene'=rownames(x))})
+# ##Filter on adj.P-value
+# listDiffMarkers_volcano<-lapply(listDiffMarkers_volcano, function(x){dplyr::filter(x, p_val_adj<0.01)})
+##Add score
+listDiffMarkers_volcano<-lapply(listDiffMarkers_volcano, function(x){rbind(x[x$avg_log2FC > 0,] %>% dplyr::mutate(.,score=pct.1/(pct.2+0.001)*avg_log2FC),
+                                                                           x[x$avg_log2FC < 0,] %>% dplyr::mutate(.,score=pct.2/(pct.1+0.001)*avg_log2FC))})
+# listDiffMarkers_volcano<-lapply(listDiffMarkers_volcano, function(x){dplyr::mutate(x,'score'=pct.1/(pct.2+0.01)*avg_log2FC)})
+##Sort on logFC
+listDiffMarkers_volcano<-lapply(listDiffMarkers_volcano,function(x){x<-x[order(x$score, decreasing=T),]})
+
+saveRDS(listDiffMarkers_volcano,file=paste0(sampleFolder,"Robjects/Rebuttal_markers_MAST_for_our_Base_FBs_volcanoplot_",sampleName,".rds"))
+
+##write to Excel
+library('openxlsx')
+write.xlsx(listDiffMarkers_volcano, paste0(sampleFolder,"results/Rebuttal/Age_DE_analysis/Rebuttal_markers_MAST_for_our_Base_FBs_volcanoplot_",sampleName,".xlsx"))
+
+#########
+library(EnhancedVolcano)
+
+list_names_volc<-c("Base FBs 82w vs 7w","Base FBs 22w vs 7w","Base FBs 82w vs 22w","Base FBs adult vs embryo")
+
+for (k in 1:length(listDiffMarkers_volcano)) {
+  E1<-EnhancedVolcano(listDiffMarkers_volcano[[k]],
+                      lab = listDiffMarkers_volcano[[k]][["gene"]],
+                      x = "avg_log2FC",
+                      y = "p_val_adj",
+                      xlim = c(-3,3),
+                      title = paste0(list_names_volc[[k]]),
+                      pCutoff = 0.01,
+                      FCcutoff = 0.25,
+                      pointSize = 2.0,
+                      labSize = 3.0)
+  pdf(file=paste0(sampleFolder,"results/Rebuttal/Age_DE_analysis/Rebuttal_volcanoplot_MAST_",names(listDiffMarkers_volcano)[k],"_",sampleName,".pdf"), width=7, height=15)
+  print(E1)
+  dev.off()
+}
+
+#################################################################
+
+levels(Idents(FB.combined_subset_rebuttal))[grep("Stromal",levels(Idents(FB.combined_subset_rebuttal)))] 
+
+# Clusters to compare!!!!
+"Stromal Fibroblasts_22w"          
+"Stromal Fibroblasts_7w"          
+"Stromal Fibroblasts_82w"          
+
+Stromal_82w_vs_Stromal_7w_volcano<-getDEgenes("Stromal Fibroblasts_82w","Stromal Fibroblasts_7w")
+Stromal_82w_vs_Stromal_7w_volcano<-Stromal_82w_vs_Stromal_7w_volcano[order(Stromal_82w_vs_Stromal_7w_volcano$avg_log2FC,decreasing = T),]
+head(Stromal_82w_vs_Stromal_7w_volcano)
+dim(Stromal_82w_vs_Stromal_7w_volcano)
+
+Stromal_22w_vs_Stromal_7w_volcano<-getDEgenes("Stromal Fibroblasts_22w","Stromal Fibroblasts_7w")
+Stromal_22w_vs_Stromal_7w_volcano<-Stromal_22w_vs_Stromal_7w_volcano[order(Stromal_22w_vs_Stromal_7w_volcano$avg_log2FC,decreasing = T),]
+head(Stromal_22w_vs_Stromal_7w_volcano)
+dim(Stromal_22w_vs_Stromal_7w_volcano)
+
+Stromal_82w_vs_Stromal_22w_volcano<-getDEgenes("Stromal Fibroblasts_82w","Stromal Fibroblasts_22w")
+Stromal_82w_vs_Stromal_22w_volcano<-Stromal_82w_vs_Stromal_22w_volcano[order(Stromal_82w_vs_Stromal_22w_volcano$avg_log2FC,decreasing = T),]
+head(Stromal_82w_vs_Stromal_22w_volcano)
+dim(Stromal_82w_vs_Stromal_22w_volcano)
+
+Stromal_adult_vs_embryo_volcano<-getDEgenes(c("Stromal Fibroblasts_82w","Stromal Fibroblasts_22w","Stromal Fibroblasts_7w"),"Stromal Fibroblasts_Embryonal")
+Stromal_adult_vs_embryo_volcano<-Stromal_adult_vs_embryo_volcano[order(Stromal_adult_vs_embryo_volcano$avg_log2FC,decreasing = T),]
+head(Stromal_adult_vs_embryo_volcano)
+dim(Stromal_adult_vs_embryo_volcano)
+
+##add to list
+listDiffMarkers_volcano_stromal<-tibble::lst(Stromal_82w_vs_Stromal_7w_volcano,Stromal_22w_vs_Stromal_7w_volcano,
+                                             Stromal_82w_vs_Stromal_22w_volcano, Stromal_adult_vs_embryo_volcano)
+
+lapply(listDiffMarkers_volcano_stromal, dim)
+
+names(listDiffMarkers_volcano_stromal)<-c("Stromal_82w_vs_7w_volcano","Stromal_22w_vs_7w_volcano",
+                                          "Stromal_82w_vs_22w_volcano","Stromal_adu_vs_embr_volcano")
+
+##Add geneSymbol in column (for the export)
+listDiffMarkers_volcano_stromal<-lapply(listDiffMarkers_volcano_stromal,function(x){x<-cbind(x,'gene'=rownames(x))})
+# ##Filter on adj.P-value
+# listDiffMarkers_volcano_stromal<-lapply(listDiffMarkers_volcano_stromal, function(x){dplyr::filter(x, p_val_adj<0.01)})
+##Add score
+listDiffMarkers_volcano_stromal<-lapply(listDiffMarkers_volcano_stromal, function(x){rbind(x[x$avg_log2FC > 0,] %>% dplyr::mutate(.,score=pct.1/(pct.2+0.001)*avg_log2FC),
+                                                                                           x[x$avg_log2FC < 0,] %>% dplyr::mutate(.,score=pct.2/(pct.1+0.001)*avg_log2FC))})
+# listDiffMarkers_volcano_stromal<-lapply(listDiffMarkers_volcano_stromal, function(x){dplyr::mutate(x,'score'=pct.1/(pct.2+0.01)*avg_log2FC)})
+##Sort on logFC
+listDiffMarkers_volcano_stromal<-lapply(listDiffMarkers_volcano_stromal,function(x){x<-x[order(x$score, decreasing=T),]})
+
+saveRDS(listDiffMarkers_volcano_stromal,file=paste0(sampleFolder,"Robjects/Rebuttal_markers_MAST_for_our_Stromal_FBs_volcanoplot_",sampleName,".rds"))
+
+##write to Excel
+library('openxlsx')
+write.xlsx(listDiffMarkers_volcano_stromal, paste0(sampleFolder,"results/Rebuttal/Age_DE_analysis/Rebuttal_markers_MAST_for_our_Stromal_FBs_volcanoplot_",sampleName,".xlsx"))
+
+#########
+library(EnhancedVolcano)
+
+list_names_volc_stromal<-c("Stromal FBs 82w vs 7w","Stromal FBs 22w vs 7w","Stromal FBs 82w vs 22w", "Stromal FBs adult vs embryo")
+
+for (k in 1:length(listDiffMarkers_volcano_stromal)) {
+  E1<-EnhancedVolcano(listDiffMarkers_volcano_stromal[[k]],
+                      lab = listDiffMarkers_volcano_stromal[[k]][["gene"]],
+                      x = "avg_log2FC",
+                      y = "p_val_adj",
+                      xlim = c(-3.5,3.5),
+                      title = paste0(list_names_volc_stromal[[k]]),
+                      pCutoff = 0.01,
+                      FCcutoff = 0.25,
+                      pointSize = 2.0,
+                      labSize = 3.0)
+  pdf(file=paste0(sampleFolder,"results/Rebuttal/Age_DE_analysis/Rebuttal_volcanoplot_MAST_",names(listDiffMarkers_volcano_stromal)[k],"_",sampleName,".pdf"), width=7, height=15)
+  print(E1)
+  dev.off()
+}
+
+Idents(FB.combined_subset_rebuttal)<-FB.combined_subset_rebuttal$Integrated_annotated_clusters
+
+##############
+
+## Extra: plots for rebuttal for quality data and M&M
+## Convert to sce
+FB.combined_subset_rebuttal2<-FB.combined_subset_rebuttal
+FB.combined_subset_rebuttal2[['integrated']] <- NULL
+sce<-as.SingleCellExperiment(FB.combined_subset_rebuttal2)
+
+##### Get mitochondrial genes #####
+is.mito <- grepl("^mt-", rownames(sce), ignore.case = T)
+sum(is.mito)
+##13
+rownames(sce)[is.mito]
+
+##### Calculate QC metrics #####
+### => pData(sce) is created
+sce <- perCellQCMetrics(sce, subsets=list(Mt=rownames(sce)[is.mito]))
+
+##### Create metaData matrix (used for downstream analysis) #####
+metaData<-data.frame("orig.ident"=FB.combined_subset_rebuttal2$Lab,
+                     "nGene"=sce$detected,"nUMI"=sce$sum,"percent.mito"=sce$subsets_Mt_percent, 
+                     stringsAsFactors = F)
+# metaData<-FB.combined_subset_rebuttal2@meta.data
+# metaData$batch<-as.character(metaData$Lab)
+
+pdf(file=paste0(sampleFolder,"results/Rebuttal/8_QC_stats_rebuttal_",sampleName,".pdf"))
+for (i in levels(as.factor(FB.combined_subset_rebuttal2$Lab))[c(2)]){
+  metaData_subset<-metaData[which(metaData$orig.ident==i),]
+  p1<-ggplot(metaData_subset, aes(x = nUMI)) +
+    geom_histogram(binwidth=100) +
+    xlab(paste0("nUMI ",i)) +
+    ylab("Frequency") +
+    theme_bw() #Count depth
+  
+  p2<-ggplot(metaData_subset, aes(x = nGene)) +
+    geom_histogram(binwidth=20) +
+    xlab(paste0("nGene ",i)) +
+    ylab("Frequency") +
+    theme_bw() # histogram of nr of genes
+  
+  p3<-ggplot(metaData_subset, aes(x = percent.mito)) +
+    geom_histogram(binwidth=1) +
+    xlab(paste0("percent.mito ",i)) +
+    ylab("Frequency") +
+    theme_bw()
+  
+  p4<-ggplot(metaData_subset, aes(x = nUMI,y=nGene,colour=percent.mito)) +
+    geom_point(size=0.5) +
+    scale_color_gradient2(midpoint=10, low="black", mid="white",
+                          high="red", space ="Lab" )+
+    xlab(paste0("nUMI ",i)) +
+    ylab(paste0("Nr of Genes ",i)) +
+    geom_rug(col=rgb(0,0,0.5,alpha=.1)) +
+    theme_bw()
+  print(p1)
+  print(p2)
+  print(p3)
+  print(p4)
+  
+}
+dev.off()
+
+pdf(file=paste0(sampleFolder,"results/Rebuttal/8_QC_stats_rebuttal_extra_",sampleName,".pdf"))
+for (i in "Lehtinen"){
+  metaData_subset<-metaData[which(metaData$orig.ident==i),]
+  p1<-ggplot(metaData_subset, aes(x = nUMI)) +
+    geom_histogram(binwidth=100) +
+    xlab(paste0("nUMI ",i)) +
+    ylab("Frequency") +
+    theme_bw() #Count depth
+  
+  p2<-ggplot(metaData_subset, aes(x = nGene)) +
+    geom_histogram(binwidth=20) +
+    xlab(paste0("nGene ",i)) +
+    ylab("Frequency") +
+    theme_bw() # histogram of nr of genes
+  
+  p4<-ggplot(metaData_subset, aes(x = nUMI,y=nGene,colour=percent.mito)) +
+    geom_point(size=0.5) +
+    # scale_color_gradient2(midpoint=10, low="black", mid="white",
+    #                       high="red", space ="Lab" )+
+    xlab(paste0("nUMI ",i)) +
+    ylab(paste0("Nr of Genes ",i)) +
+    geom_rug(col=rgb(0,0,0.5,alpha=.1)) +
+    theme_bw()
+  print(p1)
+  print(p2)
+  print(p4)
+  
+}
+dev.off()
+
+
+##############################################################################################################
+
+## Save subset
+saveRDS(FB.combined_subset_rebuttal, file = paste0(sampleFolder,"Robjects/seuratObj_subset_rebuttal_",sampleName,".rds"))
+
+##### Read object
+FB.combined_subset_rebuttal<- readRDS(file = paste0(sampleFolder,"Robjects/seuratObj_subset_rebuttal_",sampleName,".rds"))
+
+#########################################################################
+
+## Create diet object for online tool 
+DefaultAssay(FB.combined_subset_rebuttal)<-"RNA"
+FB.combined_subset_rebuttal_diet<-DietSeurat(FB.combined_subset_rebuttal, counts = T, data = T, scale.data = F,
+                                             assays = c("RNA"), dimreducs = "umap", graphs = NULL)
+
+## New metadata names
+FB.combined_subset_rebuttal_diet$Annotation<-FB.combined_subset_rebuttal_diet$Integrated_annotated_clusters
+FB.combined_subset_rebuttal_diet$Age<-factor(FB.combined_subset_rebuttal_diet$Age, levels = c("Embryonal","7w","22w","82w"))
+FB.combined_subset_rebuttal_diet$Numbered_annotation<-FB.combined_subset_rebuttal_diet$Integrated_RNA_clusters_updated
+
+DimPlot(FB.combined_subset_rebuttal_diet, reduction = "umap", label = T, repel = T, group.by = "Age", label.size = 5,
+        cols =c("deepskyblue2","springgreen3",'red2','chocolate1'))
+
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+
+All<-c(levels(as.factor(FB.combined_subset_rebuttal_diet$Annotation)),
+       levels(as.factor(FB.combined_subset_rebuttal_diet$Age)),levels(as.factor(FB.combined_subset_rebuttal_diet$Numbered_annotation)))
+Color_info<-c(gg_color_hue(4),c("#00B2EE","#00CD66",'#EE0000','#FF7F24'),gg_color_hue(6))
+Metadata_column<-c(rep("Annotation",4),rep("Age",4),rep("Numbered_annotation",6))
+Info_Kevin<-as.data.frame(cbind(All,Color_info,Metadata_column))
+
+write.xlsx(Info_Kevin, file =paste0(sampleFolder, "results/Rebuttal/Info_Kevin_rebuttal_",sampleName,".xlsx"))
+
+##### Save object
+saveRDS(FB.combined_subset_rebuttal_diet, file=paste0(sampleFolder,"Robjects/seuratObj_paper_rebuttal_diet_",sampleName,"_2023.rds"))
+
+##### Read object
+FB.combined_subset_rebuttal_diet<-readRDS(file=paste0(sampleFolder,"Robjects/seuratObj_paper_rebuttal_diet_",sampleName,"_2023.rds"))
