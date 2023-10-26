@@ -1,7 +1,6 @@
 ## Script for merging our datasets with public datasets to investigate the origin of our FBs
 ## Follow-up script to process and explore the Fibroblast origin complete object in Figure 1 manuscript
-## Initially the object still contains everything and subsequently it is subsetted to remove ChP Epithelial cells and Immune cells
-## Rebuttal: stronger harmony settings
+## Rebuttal: different harmony settings and now added new Betsholtz data
 
 library('Seurat')
 library('dplyr')
@@ -18,8 +17,8 @@ library('scater')
 
 setwd("~/VIB/DATA/Roos/Daan 1/FB_datasets/")
 
-sampleName <- "Rebuttal2_Full_merge_FB_datasets" 
-sampleFolder<-paste0("Rebuttal_mouse_data/Full_merge","/")
+sampleName <- "Rebuttal4_Full_merge_Final_FB_datasets" #Change for this analysis!!!
+sampleFolder<-paste0("Rebuttal_mouse_data/Full_merge_Final","/")
 
 ##add some subfolders
 dir.create(paste0(sampleFolder,"results_merge"))
@@ -94,12 +93,6 @@ drawUMI_mitoPlot_new<-function(coordsTable, reductionType, clusterMatrix, column
 p2<-drawUMI_mitoPlot_new(umapTable, 'umap', clusterMatrix, 'nCount_RNA',"UMI")
 
 ggsave(p2, file=paste0(sampleFolder,"results_merge/QC/1_UMI_",sampleName,".png"), width = 20)
-
-########## mito.genes plot ##########
-p2<-drawUMI_mitoPlot_new(umapTable, 'umap', clusterMatrix, 'subsets_Mito_percent',"mito")
-
-ggsave( p2, file=paste0(sampleFolder,"results_merge/QC/2_percMito_",sampleName,".png"), width = 20)
-
 
 ########## PCA plot ##########
 # pdf(file=paste0(sampleFolder,"results_merge/QC/13a_PCA_",sampleName,".pdf"), width=10)
@@ -280,6 +273,9 @@ colorSomeCells(clusterMatrix, umapTable, WhichCells(seuratObj, idents = "GSM_267
 colorSomeCells(clusterMatrix, umapTable, WhichCells(seuratObj, idents = "GSM_2677818"))
 colorSomeCells(clusterMatrix, umapTable, WhichCells(seuratObj, idents = "GSM_2677819"))
 colorSomeCells(clusterMatrix, umapTable, WhichCells(seuratObj, idents = "GSE98816_Vanlandewijck"))
+colorSomeCells(clusterMatrix, umapTable, WhichCells(seuratObj, idents = "GSE227713_Betsholtz_leptomeninges"))
+colorSomeCells(clusterMatrix, umapTable, WhichCells(seuratObj, idents = "GSE233270_Betsholtz_dural"))
+colorSomeCells(clusterMatrix, umapTable, WhichCells(seuratObj, idents = "GSE228882_Betsholtz_FACS"))
 colorSomeCells(clusterMatrix, umapTable, WhichCells(seuratObj, idents = "Vascular_cells_atlas"))
 colorSomeCells(clusterMatrix, umapTable, WhichCells(seuratObj, idents = "Ependymal_cells_atlas"))
 colorSomeCells(clusterMatrix, umapTable, WhichCells(seuratObj, idents = "RVD1_LpsNegFour"))
@@ -327,6 +323,11 @@ Vasc_annot_v2<-Mat_Vasc_annot[,1]
 
 seuratObj@meta.data[Vasc_Vldw_cells,"New_clusters"]<-Vasc_annot_v2
 
+## Update clusters Betsholtz new
+Betsholtz_new_cells<-colnames(seuratObj[,c(grep("FB2",colnames(seuratObj)),grep("FB3",colnames(seuratObj)),grep("FB4",colnames(seuratObj)))])
+
+seuratObj@meta.data[Betsholtz_new_cells,"New_clusters"]<-seuratObj@meta.data[Betsholtz_new_cells,"Annotation_Betsholtz_paper"]
+
 ## Save plot
 pdf(file=paste0(sampleFolder,"results_merge/Annotation/1_annotation_original_dataset_harmony_",sampleName,".pdf"), width = 17, height = 10)
 DimPlot(seuratObj, reduction = "umap", label = T, group.by = "New_clusters", label.size = 2, repel = T)
@@ -345,13 +346,15 @@ seuratObj@meta.data$annotated_clusters <- factor(seuratObj@meta.data$annotated_c
 ########################################
 ##### Manual annotation
 ########################################
-levels(seuratObj@meta.data$annotated_clusters) <- c("Endothelial and vascular cells","Fibroblasts","Endothelial and vascular cells",
-                                                    "Fibroblasts","Proliferating cells","Fibroblasts","Smooth muscle cells",
-                                                    "Endothelial and vascular cells","Fibroblasts","Endothelial and vascular cells",
-                                                    "Neuronal and glial cells","Fibroblasts","Endothelial and vascular cells",
-                                                    "Neuronal and glial cells","Neuronal and glial cells","Endothelial and vascular cells",
+levels(seuratObj@meta.data$annotated_clusters) <- c("Endothelial and vascular cells","Fibroblasts","Fibroblasts",
+                                                    "Endothelial and vascular cells","Proliferating cells","Fibroblasts",
+                                                    "Endothelial and vascular cells","Smooth muscle cells",
+                                                    "Fibroblasts","Endothelial and vascular cells","Endothelial and vascular cells",
+                                                    "Neuronal and glial cells","Neuronal and glial cells",
+                                                    "Endothelial and vascular cells","Fibroblasts",
                                                     "Neuronal and glial cells","Endothelial and vascular cells",
-                                                    "Neuronal and glial cells","Perivascular macrophages")
+                                                    "Neuronal and glial cells","Perivascular macrophages",
+                                                    "Neuronal and glial cells","Fibroblasts","Endothelial and vascular cells")
 U_annot<-DimPlot(seuratObj, reduction = "umap", label = T, repel = T, group.by = "annotated_clusters", label.size = 4)
 ggsave(U_annot, file=paste0(sampleFolder,"results_merge/Annotation/2_UMAP_annotated_",sampleName,".png"), height = 10, width = 16, dpi = "retina")
 
@@ -427,7 +430,8 @@ dev.off()
 
 seuratObj@meta.data$sample_origin2<-as.factor(seuratObj@meta.data$orig.ident)
 levels(seuratObj@meta.data$sample_origin2)<-c(rep("Meningeal fibroblasts (DeSisto et al)",3),
-                                              "Ependymal cells (Zeisel et al)","Brain vascular cells (Vanlandewijck et al)",
+                                              "Ependymal cells (Zeisel et al)",
+                                              rep("Meningeal fibroblasts (Pietilä et al)",3),"Brain vascular cells (Vanlandewijck et al)",
                                               rep("Ependymal cells (Shah et al)",3),
                                               rep("ChP vascular cells (Verhaege et al)",4),
                                               "CNS vascular cells (Zeisel et al)")
@@ -445,7 +449,7 @@ data2 <- data.frame(table(Sample,Aggr))
 # Stacked
 library("ggthemes")
 library(RColorBrewer)
-Colorset<-c(brewer.pal(8,"Set1")[c(1,7,2,3,4,5)])
+Colorset<-c(brewer.pal(8,"Set1")[c(1,7,6,2,3,4,5)])
 
 p1<-ggplot(data, aes(fill=Sample, y=Freq, x=cluster)) + theme_bw() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.6)) +
@@ -558,7 +562,7 @@ metaData<-data.frame("orig.ident"=seuratObj$sample_origin2,
                      stringsAsFactors = F)
 
 pdf(file=paste0(sampleFolder,"results_merge/Annotation/5_QC_stats_rebuttal_",sampleName,".pdf"))
-for (i in levels(seuratObj$sample_origin2)[c(1,2,4,5,6)]){
+for (i in levels(seuratObj$sample_origin2)[c(1,2,3,5,6,7)]){
   metaData_subset<-metaData[which(metaData$orig.ident==i),]
   p1<-ggplot(metaData_subset, aes(x = nUMI)) +
     geom_histogram(binwidth=100) +
@@ -641,7 +645,7 @@ DimPlot(seuratObj_diet, reduction = "umap", label = T, repel = F, group.by = "Au
         cols =Colorset2)
 # cols =c(brewer.pal(n = 6, name = "Set3")[1],"Yellow",brewer.pal(n = 6, name = "Set3")[c(3:6)]))
 library(RColorBrewer)
-Colorset1<-c(brewer.pal(8,"Set1")[c(1,7,2,3,4,5)]) #origin
+Colorset1<-c(brewer.pal(8,"Set1")[c(1,7,6,2,3,4,5)]) #origin
 Colorset2<-c(brewer.pal(12,"Set3")[c(1,3:6,7,8,10)],"#EE30A7",brewer.pal(12,"Set3")[c(11,12)]) #auto
 
 gg_color_hue <- function(n) {
@@ -651,9 +655,9 @@ gg_color_hue <- function(n) {
 
 All<-c(levels(as.factor(seuratObj_diet$Manual_annotation)),levels(as.factor(seuratObj_diet$Origin)),
        levels(as.factor(seuratObj_diet$Numbered_clusters)),levels(as.factor(seuratObj_diet$Automatic_annotation)))
-Color_info<-c(gg_color_hue(6),Colorset1,gg_color_hue(20),Colorset2)
-Metadata_column<-c(rep("Manual_annotation",6),rep("Origin",6),
-                   rep("Numbered_clusters",20),rep("Automatic_annotation",11))
+Color_info<-c(gg_color_hue(6),Colorset1,gg_color_hue(22),Colorset2)
+Metadata_column<-c(rep("Manual_annotation",6),rep("Origin",7),
+                   rep("Numbered_clusters",22),rep("Automatic_annotation",11))
 Info_Kevin<-as.data.frame(cbind(All,Color_info,Metadata_column))
 
 write.xlsx(Info_Kevin, file =paste0(sampleFolder, "results_merge/Annotation/Info_Kevin_rebuttal_",sampleName,".xlsx"))

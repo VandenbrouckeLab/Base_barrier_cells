@@ -1,6 +1,6 @@
 ## Script for merging our datasets with public datasets to investigate the origin of our FBs
 ## Initial basic Seurat and Harmony workflow script to create Fibroblast origin complete object in Figure 1 manuscript
-## Rebuttal: Stronger harmony settings
+## Rebuttal: Different harmony settings and added new Betsholtz data
 
 library(Seurat)
 library(SingleCellExperiment)
@@ -72,23 +72,28 @@ seuratObj7<-UpdateSeuratObject(seuratObj7)
 seuratObj8<-UpdateSeuratObject(seuratObj8)
 
 ################################################################################
+
+## New Betsholtz seuratobjects
+seuratObj9<-readRDS(file="Betsholtz_new/Dissected_leptomeninges/Robjects/seuratObj_final_GSE227713_Betsholtz_leptomeninges.rds")
+seuratObj10<-readRDS(file="Betsholtz_new/Dissected_dural/Robjects/seuratObj_final_GSE233270_Betsholtz_dural.rds")
+seuratObj11<-readRDS(file="Betsholtz_new/FACS_sorted_cells/Robjects/seuratObj_final_GSE228882_Betsholtz_FACS.rds")
+
 ################################################################################
 
-
 ## Prepare folders
-dir.create("Rebuttal_mouse_data/Full_merge/")
-dir.create("Rebuttal_mouse_data/Full_merge/Plots")
-dir.create("Rebuttal_mouse_data/Full_merge/Plots/RNA")
-dir.create("Rebuttal_mouse_data/Full_merge/Robjects")
+dir.create("Rebuttal_mouse_data/Full_merge_Final/")
+dir.create("Rebuttal_mouse_data/Full_merge_Final/Plots")
+dir.create("Rebuttal_mouse_data/Full_merge_Final/Plots/RNA")
+dir.create("Rebuttal_mouse_data/Full_merge_Final/Robjects")
 
-output.dir<-"Rebuttal_mouse_data/Full_merge/"
+output.dir<-"Rebuttal_mouse_data/Full_merge_Final/"
 
 ## Merge all seuratobjects
-seuratObj <- merge(seuratObj1, y = c(seuratObj2,seuratObj3,seuratObj4,seuratObj5,seuratObj6,seuratObj7,seuratObj8),
-                   add.cell.ids = c("FB1","EP1","EP2","EP3","VASC1","VASC2","EP4","URVB"), project = "FB_merge", merge.data = T)
+seuratObj <- merge(seuratObj1, y = c(seuratObj2,seuratObj3,seuratObj4,seuratObj5,seuratObj6,seuratObj7,seuratObj8,seuratObj9,seuratObj10,seuratObj11),
+                   add.cell.ids = c("FB1","EP1","EP2","EP3","VASC1","VASC2","EP4","URVB","FB2","FB3","FB4"), project = "FB_merge", merge.data = T)
 
 dim(seuratObj)
-# [1] 29623 30800
+# [1] 40419 32720
 
 diagnostics<-list()
 
@@ -123,13 +128,13 @@ library("harmony")
 levels(as.factor(seuratObj$orig.ident))
 seuratObj@meta.data$sample_origin<-as.factor(seuratObj@meta.data$orig.ident)
 levels(seuratObj@meta.data$sample_origin)<-c("FB_DeSisto_et_al_1","FB_DeSisto_et_al_2","FB_DeSisto_et_al_3",
-                                             "Ependymal_Zeisel_et_al","Vascular_Vanlandewijck_et_al",
+                                             "Ependymal_Zeisel_et_al","FB_Pietilä_et_al_1","FB_Pietilä_et_al_4","FB_Pietilä_et_al_2","Vascular_Vanlandewijck_et_al",
                                              "Ependymal_Shah_et_al_1","Ependymal_Shah_et_al_2","Ependymal_Shah_et_al_3",
                                              "CP_LpsNeg_4V_Urvb","CP_LpsNeg_LV_Urvb","CP_Young_4V_Urvb","CP_Young_LV_Urvb",
                                              "Vascular_Zeisel_et_al")
 seuratObj$Dataset <- as.factor(seuratObj@meta.data$orig.ident)
 levels(seuratObj@meta.data$Dataset)<-c("FB_DeSisto_et_al","FB_DeSisto_et_al","FB_DeSisto_et_al",
-                                       "Ependymal_Zeisel_et_al","Vascular_Vanlandewijck_et_al",
+                                       "Ependymal_Zeisel_et_al","FB_Pietilä_et_al","FB_Pietilä_et_al","FB_Pietilä_et_al","Vascular_Vanlandewijck_et_al",
                                        "Ependymal_Shah_et_al","Ependymal_Shah_et_al","Ependymal_Shah_et_al",
                                        "Verhaege_et_al","Verhaege_et_al","Verhaege_et_al","Verhaege_et_al",
                                        "Vascular_Zeisel_et_al")
@@ -144,8 +149,8 @@ ggsave(plot_grid(p1, p2), file=paste0(output.dir,"Plots/RNA/1a_vlnPlot_beforeAli
 ########## Run Harmony ##########
 ### Increase theta parameter in case of bad overlap!
 options(repr.plot.height = 3, repr.plot.width = 6)
-seuratObj<-RunHarmony(seuratObj, group.by.vars = c("sample_origin","Dataset"), theta = c(2,4), plot_convergence = TRUE, nclust = 50,
-                      max.iter.cluster = 100, max.iter.harmony = 20, dims.use=1:40) #V1
+seuratObj<-RunHarmony(seuratObj, group.by.vars = c("sample_origin","Dataset"), theta = c(1,3), plot_convergence = TRUE, nclust = 50,
+                      max.iter.cluster = 100, max.iter.harmony = 20, dims.use=1:40)  #V1
 
 ### Get embeddings
 harmony_embeddings <- Embeddings(seuratObj, 'harmony')
@@ -177,7 +182,7 @@ dev.off()
 ElbowPlot(object = seuratObj, ndims = 40)
 
 
-dimsToTry<-c(seq(15,40,by=5))
+dimsToTry<-c(seq(10,30,by=5))
 
 resToUse<-0.8
 
@@ -206,7 +211,7 @@ for(maxPCs in dimsToTry){
 ################################################################################
 
 ### Final
-dimsToTry<-c(15)
+dimsToTry<-c(20)
 resToUse<-0.8
 diagnostics[['dimsPC']]<-dimsToTry
 diagnostics[['res']]<-resToUse
@@ -233,9 +238,9 @@ names(seuratObj)
 
 ### Clustering: trying out clusTree
 
-Perplexity<-15
+Perplexity<-20
 Resolution<-0.8
-Perplexity_UMAP<-15
+Perplexity_UMAP<-20
 
 seuratObj <- FindNeighbors(object = seuratObj, reduction = "harmony", dims = 1:Perplexity)
 resolutions <- seq(0,1,by=0.1)
@@ -268,7 +273,7 @@ pdf(file=paste0(output.dir,"Plots/RNA/11_UMAP.pdf"), width = 17*0.45, height = 1
 umapPlot
 dev.off()
 
-experiment<-"Rebuttal2_Full_merge_FB_datasets"
+experiment<-"Rebuttal4_Full_merge_Final_FB_datasets"
 
 # Save objects
 saveRDS(seuratObj, file = paste0(output.dir,"Robjects/seuratObj_",experiment,"_harmony_RNA.rds"))
@@ -277,4 +282,6 @@ saveRDS(diagnostics, file=paste0(output.dir,"Robjects/diagnostics_",experiment, 
 # Read objects
 seuratObj<-readRDS(file = paste0(output.dir,"Robjects/seuratObj_",experiment,"_harmony_RNA.rds"))
 diagnostics<-readRDS(file=paste0(output.dir,"Robjects/diagnostics_",experiment, "_harmony_RNA.rds"))
+
+
 

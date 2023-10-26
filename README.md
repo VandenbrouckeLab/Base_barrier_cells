@@ -17,7 +17,7 @@ Here's an overview of the various R scripts used in processing the sc/snRNA-Seq 
 - 7.script_scRNAseq_loom_files_Zeisel.R: Data extraction and basic Seurat workflow for processing the CNS vascular and ependymal cell data from Zeisel et al. (2 loom files, l6_r3_vascular_cells and l6_r4_ependymal_cells, obtained from http://mousebrain.org/)
 - 8.script1_FB_origin_complete_object.R: Seurat and harmony workflow for merging our 7- and 22-week-old ChP LV & 4V data with various public datasets and as such creating the Fibroblast origin complete object
 - 9.script2_FB_origin_complete_object.R: Further processing and exploration of the Fibroblast origin complete object
-- 10.script1_FB_origin_subset_object.R: Seurat and harmony workflow for merging the Fibroblasts from our 7- and 22-week-old ChP LV & 4V data with various public dataset Fibroblasts and as such creating the Fibroblast origin subset object
+- 10.script1_FB_origin_subset_object.R: Seurat and CCA workflow for merging the Fibroblasts from our 7- and 22-week-old ChP LV & 4V data with various public dataset Fibroblasts and as such creating the Fibroblast origin subset object
 - 11.script2_FB_origin_subset_object.R: Further processing and exploration of the Fibroblast origin subset object
 - 12.script_scRNAseq_7_and_22_and_82wo_ChP_4V_LV.R: Basic Seurat workflow for processing our 7-, 22- and 82-week-old scRNA-Seq ChP LV & 4V data
 - 13.script_scRNAseq_Lehtinen.R: Basic Seurat workflow for processing the embryonal scRNA-Seq ChP data from the Lehtinen lab (Dani et al., obtained from https://singlecell.broadinstitute.org/single_cell/study/SCP1365/choroid-plexus-cell-atlas)
@@ -26,6 +26,7 @@ Here's an overview of the various R scripts used in processing the sc/snRNA-Seq 
 - 16.script_conversion_human_snRNAseq_Yang.R: Conversion of gene names in snRNA-Seq human dataset (Yang et al.) to mouse orthologues
 - 17.script_FB_ChP_species_object_CCA_attempt.R.R: Attempted CCA analysis workflow 2 snRNA-Seq human (Yang et al.) and scRNA-Seq mouse data. Object used as starting point in BBKNN script.
 - 18.script_FB_ChP_species_object_BBKNN.R: BBKNN analysis snRNA-Seq human (Yang et al.) and scRNA-Seq mouse data for ChP Fibroblast species object
+- 19.script_scRNAseq_Betsholtz_new_data_rebuttal.R: Basic Seurat workflow for processing the fibroblast data from Pietilä et al.
 
 ## Public data
 
@@ -35,6 +36,7 @@ Here's an overview of the various R scripts used in processing the sc/snRNA-Seq 
 4.	Zeisel, A. et al. Molecular Architecture of the Mouse Nervous System. Cell 174, 999-1014.e22 (2018).
 5.	Dani, N. et al. A cellular and spatial map of the choroid plexus across brain ventricles and ages. Cell 184, 3056-3074.e21 (2021).
 6.	Yang, A. C. et al. Dysregulation of brain and choroid plexus cell types in severe COVID-19. Nat. 2021 5957868 595, 565–571 (2021).
+7.	Pietilä, R. et al. Molecular anatomy of adult mouse leptomeninges. Neuron S0896-6273(23)00666-9 (2023).
 
 ## Citation
 
