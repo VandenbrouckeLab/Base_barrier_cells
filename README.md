@@ -30,7 +30,12 @@ Here's an overview of the various R scripts used in processing the sc/snRNA-Seq 
 
 ## Overview datasets
 Final SeuratObjects created with the scripts above have been uploaded as datasets to Zenodo.
-[![Download](images/bullseye.svg)] (https://doi.org/10.5281/zenodo.17977642)
+<p align="left">
+  <a href="https://doi.org/10.5281/zenodo.17977642">
+    <img src="images/bullseye.svg" alt="Download" width="64" height="64" />
+  </a>
+</p>
+
 
 Here's an overview:
 - 1.seuratObj_paper_LpsNegAggr.rds: 7-week-old ChP LV & 4V aggregate SeuratObject from 1.script_scRNAseq_7wo_ChP_4V_LV_Aggr.R
