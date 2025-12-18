@@ -29,7 +29,8 @@ Here's an overview of the various R scripts used in processing the sc/snRNA-Seq 
 - 19.script_scRNAseq_Betsholtz_new_data_rebuttal.R: Basic Seurat workflow for processing the fibroblast data from Pietilä et al.
 
 ## Overview datasets
-Final SeuratObjects created with the scripts above have been uploaded as datasets to Zenodo: https://doi.org/10.5281/zenodo.17977642
+Final SeuratObjects created with the scripts above have been uploaded as datasets to Zenodo.
+[![Download](assets/bullseye.svg)] (https://doi.org/10.5281/zenodo.17977642)
 
 Here's an overview:
 - 1.seuratObj_paper_LpsNegAggr.rds: 7-week-old ChP LV & 4V aggregate SeuratObject from 1.script_scRNAseq_7wo_ChP_4V_LV_Aggr.R
