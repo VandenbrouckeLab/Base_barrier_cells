@@ -29,7 +29,7 @@ Here's an overview of the various R scripts used in processing the sc/snRNA-Seq 
 - 19.script_scRNAseq_Betsholtz_new_data_rebuttal.R: Basic Seurat workflow for processing the fibroblast data from Pietilä et al.
 
 ## Overview datasets
-Final SeuratObjects created with the scripts above have been uploaded as datasets to Zenodo.
+Final SeuratObjects created with the scripts above have been uploaded as datasets to Zenodo. [![Bullseye](images/bullseye-small.svg) **Download the SeuratObjects here**](https://doi.org/10.5281/zenodo.17977642)
 <p align="left">
   <a href="https://doi.org/10.5281/zenodo.17977642">
     <img src="images/bullseye.svg" alt="Download" width="64" height="64" />
