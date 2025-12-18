@@ -31,9 +31,8 @@ Here's an overview of the various R scripts used in processing the sc/snRNA-Seq 
 ## Overview datasets
 <p align="left">
   Final SeuratObjects created with the scripts above have been uploaded as datasets to Zenodo. <br> 
-  Download here <a href="https://doi.org/10.5281/zenodo.17977642">
-    <img src="images/bullseye.svg" alt="Download" width="32" height="32" />
-  </a>
+  <img src="images/bullseye.svg" alt="Download" width="32" height="32" /> 
+  Download here: https://doi.org/10.5281/zenodo.17977642
 </p>
 
 
