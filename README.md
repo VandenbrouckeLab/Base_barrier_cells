@@ -28,6 +28,16 @@ Here's an overview of the various R scripts used in processing the sc/snRNA-Seq 
 - 18.script_FB_ChP_species_object_BBKNN.R: BBKNN analysis snRNA-Seq human (Yang et al.) and scRNA-Seq mouse data for ChP Fibroblast species object
 - 19.script_scRNAseq_Betsholtz_new_data_rebuttal.R: Basic Seurat workflow for processing the fibroblast data from Pietilä et al.
 
+## Overview datasets
+SeuratObjects created with the scripts above have been uploaded as datasets to Zenodo:
+
+Here's an overview:
+- 1.seuratObj_paper_LpsNegAggr.rds: 7-week-old ChP LV & 4V aggregate SeuratObject from 1.script_scRNAseq_7wo_ChP_4V_LV_Aggr.R
+- 2.seuratObj_Rebuttal4_Full_merge_Final_FB_datasets_harmony_RNA.rds: Fibroblast origin complete SeuratObject from 8.script1_FB_origin_complete_object.R and 9.script2_FB_origin_complete_object.R
+- 3.seuratObj_clean_Rebuttal7_Full_Merge_subset_CCA_v7_FB_datasets_CCA_RNA.rds: Fibroblast origin subset SeuratObject from 10.script1_FB_origin_subset_object.R and 11.script2_FB_origin_subset_object.R
+- 4.seuratObj_subset_rebuttal_CCA_FB_6datasets_Fig2.rds: ChP Fibroblast age SeuratObject from 14.script_FB_ChP_age_object_CCA.R
+- 5.Ridge_regressed_seuratObj_new_BBKNN_integrated_Human_and_Mouse_CP.rds: ChP Fibroblast species SeuratObject from 18.script_FB_ChP_species_object_BBKNN.R
+
 ## Public data
 
 1.	Shah, P. T. et al. Single-Cell Transcriptomics and Fate Mapping of Ependymal Cells Reveals an Absence of Neural Stem Cell Function. Cell 173, 1045-1057.e9 (2018).
