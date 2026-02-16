@@ -55,4 +55,5 @@ Here's an overview:
 
 ## Citation
 
-...
+Verhaege, D., De Nolf, C., Van Acker, L. et al. Base barrier cells provide compartmentalization of choroid plexus, brain and CSF. Nat Neurosci (2026). https://doi.org/10.1038/s41593-025-02188-7
+
